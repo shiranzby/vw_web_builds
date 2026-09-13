@@ -60,5 +60,12 @@
     </bit-nav-group>
   </app-side-nav>
 
+  <!-- 窄屏二级导航 chips + 设置页账户卡片(自托管定制, 见各自的 .component.ts 头部注释)。
+       放在 router-outlet **之前**, 三者会一起落进 bit-layout 的 <main id="main-content">,
+       于是 DOM 顺序是 [chips][账户卡片][路由内容] —— 与 L4 注入时的顺序一致。
+       两个组件的显示/隐藏都由 CSS(J 段 / J2)与自身 @if 决定, 不做视口判断。 -->
+  <app-mobile-sub-nav></app-mobile-sub-nav>
+  <app-account-card></app-account-card>
+
   <router-outlet></router-outlet>
 </app-layout>

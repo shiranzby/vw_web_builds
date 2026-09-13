@@ -1,0 +1,39 @@
+<!--
+  DOM 标记（#warden-acctcard / .warden-acct-* / data-act）有意与 L4 注入的那份一致，
+  这样 tests/mobile-regression.mjs 的 G2/G3/G4 不需要改（G4 更是直接点
+  `#warden-acctcard .warden-acct-avatar` 并等 filechooser 事件）。
+
+  「锁定 / 注销」两个动作原来在页头头像的菜单里（app-account-menu）。窄屏我们把它整个收掉、
+  设置页也换成这张卡片，所以这两个动作必须在这里有去处。
+-->
+@if (visible()) {
+  <div id="warden-acctcard" class="warden-acctcard">
+    <button
+      type="button"
+      class="warden-acct-avatar"
+      title="点击更换头像"
+      [attr.aria-label]="'更换头像'"
+      (click)="pickAvatar()"
+    >
+      {{ initial() }}
+    </button>
+    <span class="warden-acct-text">
+      <b class="warden-acct-name">{{ name() }}</b>
+      <span class="warden-acct-mail">{{ mail() }}</span>
+    </span>
+    <span class="warden-acct-acts">
+      <button type="button" data-act="lock" (click)="lock()">锁定</button>
+      <button type="button" data-act="logout" class="warden-acct-danger" (click)="logout()">
+        注销
+      </button>
+    </span>
+    <!-- 隐藏的文件选择器：点上面的头像即点它（Playwright 靠 input.click() 触发 filechooser） -->
+    <input
+      #avatarInput
+      type="file"
+      accept="image/*"
+      class="warden-acct-file"
+      (change)="onAvatarFile($event)"
+    />
+  </div>
+}

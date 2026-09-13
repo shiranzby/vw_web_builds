@@ -20,6 +20,8 @@ import { PremiumSubscriptionRoutingService } from "@bitwarden/web-vault/app/bill
 import { BillingFreeFamiliesNavItemComponent } from "../billing/shared/billing-free-families-nav-item.component";
 import { CoachmarkComponent, CoachmarkService } from "../vault/components/coachmark";
 
+import { AccountCardComponent } from "./account-card.component";
+import { MobileSubNavComponent } from "./mobile-sub-nav.component";
 import { WebLayoutModule } from "./web-layout.module";
 
 // FIXME(https://bitwarden.atlassian.net/browse/CL-764): Migrate to OnPush
@@ -36,6 +38,8 @@ import { WebLayoutModule } from "./web-layout.module";
     BillingFreeFamiliesNavItemComponent,
     PopoverModule,
     CoachmarkComponent,
+    MobileSubNavComponent,
+    AccountCardComponent,
   ],
 })
 export class UserLayoutComponent implements OnInit {

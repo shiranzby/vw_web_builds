@@ -79,17 +79,18 @@ bit-nav-logo bit-nav-item .bwi-shield {
  * shypwd mobile adaptation
  *
  * Migrated from the former runtime patch layer (warden-worker `custom/custom.css`
- * sections F / H / K / M). These rules are global-scope by nature: their targets
- * (`main#main-content` shell, `bit-dialog` / `.cdk-overlay-pane`,
- * `ng-dropdown-panel`) live outside any Angular component subtree, so putting
- * them in app SCSS would require ::ng-deep / ViewEncapsulation.None — worse.
+ * sections A / F / H / I / J / J2 / J3 / J7 / J9 / J10 / J14 / K / M / G). These rules
+ * are global-scope by nature: their targets (`main#main-content` shell, `bit-dialog` /
+ * `.cdk-overlay-pane`, `ng-dropdown-panel`) live outside any Angular component subtree,
+ * so putting them in app SCSS would require ::ng-deep / ViewEncapsulation.None — worse.
  *
  * Load order works in our favour: index.html pulls the bundled `styles.css`
  * in <head>, then this file as the first element of <body>. So for equal
  * specificity with both sides using !important, these declarations win.
  *
- * Everything below except M is inside `@media (max-width: 768px)` — desktop
- * is untouched.
+ * Most of what is below is inside `@media (max-width: 768px)`; the exceptions are
+ * M (ng-select hardening), G (tab bar), I's account-card hide rules (J3) and the
+ * J10 account card itself — those are deliberately desktop-visible.
  * ========================================================================== */
 
 /* ======================================================================
@@ -727,5 +728,326 @@ ng-dropdown-panel,
   }
   .warden-tabbar a.warden-tab-active {
     color: #7aa7ff;
+  }
+}
+
+/* ======================================================================
+ * F5. 窄屏: 隐藏原生侧边导航(一级交给底部标签栏)
+ *
+ *    上一批(F 段)刻意没搬 L4 的这条 —— 应用的导航开关按钮就长在 `bit-side-nav`
+ *    内部(side-nav.component.html 底部那个 bwi-angle-left/right 按钮), 窄屏藏掉
+ *    整个导航 = 失去唯一的导航入口。现在 J17 的底部标签栏(mobile-tab-bar)已就位,
+ *    这个前提解除, 所以搬进来。
+ *
+ *    为什么整块藏而不是改样式收窄: 应用在窄屏本来就把侧栏收成一条图标导轨
+ *    (`SideNavService.open` 为 false), 那条导轨只显示图标、不显示文字, 占着约 60px
+ *    宽还要求用户猜图标含义; 底部标签栏是有文字标签的替代品, 功能上完全覆盖。
+ * ====================================================================== */
+@media (max-width: 768px) {
+  app-side-nav,
+  bit-side-nav {
+    display: none !important;
+  }
+}
+
+/* ======================================================================
+ * I 段. 窄屏: 收掉重复的密码库页头, 只留「新增」
+ *
+ *    密码库页那个页头一行里塞了「所有密码库 + 视图切换 + US 头像」+「新增」。
+ *    前三者在窄屏上全是冗余: 分区由底部标签栏标明, 当前筛选名由 J9 的筛选抽屉按钮
+ *    显示, 账户动作在设置页的账户卡片里。但**「新增」不能一起藏** —— 它是窄屏上
+ *    唯一的建条目入口(空库时的空态按钮只在 isEmpty 时出现)。
+ *
+ *    ⚠️ 这里与 L4 的实现方式不同, 是本次迁移里**有意保留的差异**:
+ *       L4 把整个 `app-vault-header` 藏掉, 再由 custom.js 的 dockNewBtn() 在运行期
+ *       把官方 `vault-new-cipher-menu` 元素 appendChild 进表格「名称」表头的工具行
+ *       (#warden-headbar 里的 .warden-headslot), 同时记下它原来的父节点/后继节点,
+ *       离开窄屏或离开列表页时再拼回去 —— 前后约 35 行 JS, 只为了搬一个 DOM 节点,
+ *       而且每次 Angular 重渲染都要重新判定"落点还在不在"。
+ *       现在改成: 页头**不整个藏**, 只藏左边那一列(标题/面包屑/)和产品切换宫格,
+ *       页头自己收缩成一条只含「新增」的紧凑工具行。官方组件保持单实例、零 DOM 搬运,
+ *       零 JS 记账, 内联的新增菜单(新建项目/文件夹/集合)也原样保留。
+ *       代价: 比 L4 多占约一行高度(那条工具行本身)。要回到 L4 那种"和列头同一行"的
+ *       观感, 需要把菜单搬进模板里的 .warden-headbar —— 那会引入 vault-items 的
+ *       一串输入/输出(因为菜单的 canCreateCipher / canCreateFolder / disabled 以及
+ *       三个输出事件都挂在页头组件上), 属于为了省一行高度换一堆样板, 不划算。
+ * ====================================================================== */
+@media (max-width: 768px) {
+  /* 其余页面保留标题, 只藏右上角头像(账户动作在设置页顶部卡片里) */
+  main#main-content app-account-menu {
+    display: none !important;
+  }
+  /* 密码库页头: 左边那一列(面包屑 + h1 标题, 含 title-suffix 的集合编辑菜单)整列收掉 */
+  main#main-content app-vault-header app-header header > div:first-child > div:first-child {
+    display: none !important;
+  }
+  /* 产品切换宫格(三项产品图标) —— 窄屏上占位置且容易误触 */
+  main#main-content app-vault-header app-header header product-switcher {
+    display: none !important;
+  }
+  /* 页头收缩成一条工具行。H1 给过一套 padding/margin, 这里的选择器多一层
+     app-vault-header, 加权更高, 只覆盖上下方向, 左右保持 H1 的 10px。 */
+  main#main-content app-vault-header app-header header {
+    padding-top: 0 !important;
+    padding-bottom: 2px !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+/* ======================================================================
+ * J 段. 窄屏「二级导航」chips —— 标记在 mobile-sub-nav.component.html
+ *
+ *    显示/隐藏完全交给这里的 @media, 组件本身不判断视口(旋转屏幕时由浏览器接管,
+ *    不经过变更检测, 也就不会闪)。桌面端 `display: none`。
+ *
+ *    与 L4 的 J 段逐条对齐(宽度、圆角、字号、选中态配色一致), 差别只有:
+ *      · L4 的条目由 JS 建、点击改 location.hash 再手工高亮; 这里是 routerLink +
+ *        routerLinkActive, 高亮态由路由决定, 不存在"乐观点亮再纠正"的过程;
+ *      · 条目等分靠 flex-basis:0(必须写 0, 用 auto 的话宽度由文字长短决定)。
+ * ====================================================================== */
+app-mobile-sub-nav {
+  display: block;
+}
+.warden-subnav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .warden-subnav {
+    display: flex;
+    gap: 6px;
+    margin: 0 0 8px;
+    padding: 1px 0 2px;
+    overflow: visible;
+  }
+  .warden-subnav a {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 32px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0, 0, 0, 0.16);
+    border-radius: 999px;
+    background: transparent;
+    color: #4b5563;
+    font-size: 12px;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    /* 消掉移动端 ~300ms 的点击延迟, 让"触摸即可变色" */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .warden-subnav a:active {
+    background: rgba(0, 0, 0, 0.05);
+  }
+  .warden-subnav a.warden-subnav-on {
+    background: #175ddc;
+    border-color: #175ddc;
+    color: #ffffff;
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 768px) and (prefers-color-scheme: dark) {
+  .warden-subnav a {
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #c3c9d4;
+  }
+  .warden-subnav a:active {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .warden-subnav a.warden-subnav-on {
+    background: #7aa7ff;
+    border-color: #7aa7ff;
+    color: #11161d;
+  }
+}
+
+/* ======================================================================
+ * J2. 窄屏: 有二级导航时, 把设置/工具页那个大标题页头压掉
+ *     那个 app-header 里只有 h1 大标题 + 产品切换宫格 + 头像 —— 窄屏上全是冗余:
+ *     分区由底部标签栏标明, 二级由上面那条 chips 标明, 标题再把内容往下压就没意义了。
+ *
+ *     ⚠️ 只藏"标题行", **不能藏整个 header**: 安全 / 两步登录 / 设备 这类页面
+ *        的三级 tabs(会话超时·主密码·两步登录·设备·密钥)也渲染在 header 里的
+ *        [data-tabs] 里, 藏了整个 header 就没法在这些子页之间切换了。
+ *
+ *     判定条件: L4 用 custom.js 在 body 上挂 `warden-has-subnav`(还要保证在 Angular
+ *     渲染前挂上, 否则会"先画出来再消失")。这里直接用 `main:has(#warden-subnav)`
+ *     —— chips 组件本身就在 main 里, 而它只在工具/设置分区渲染, 于是判定条件与
+ *     L4 的类完全等价, 且由浏览器首帧即可判定, 天然没有闪烁问题。
+ * ====================================================================== */
+@media (max-width: 768px) {
+  main#main-content:has(#warden-subnav) app-header header > div:not([data-tabs]) {
+    display: none !important;
+  }
+  /* 标题行没了之后, 页头自己的留白也要一起收掉, 否则 chips 和内容之间空出一道 */
+  main#main-content:has(#warden-subnav) app-header header {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    gap: 0 !important;
+  }
+}
+
+/* ======================================================================
+ * J3. 设置页: 官方「64px 大头像 + 自定义」那一行, 以及页头右上角的头像, 一起收掉
+ *     它们只占地方, 而且那个「自定义」弹窗只有一个 <input type="color"> —— 只能改
+ *     头像底色。换成: 点账户卡片里的头像直接选图上传(见 account-card.component)。
+ *
+ *     ⚠️⚠️ 这里**必须写成纯 CSS + :has(), 不能靠 JS 事后加类**。
+ *     v8 是 JS 在 syncChrome() 里给那一行加 .warden-app-avatar-row, 而 syncChrome
+ *     跑在 MutationObserver(异步) + 2s 定时器上 —— Angular 早就把那一行画出来了,
+ *     于是用户看到"头像和自定义按钮先出现、再消失"(G2 那条断言守的就是这个:
+ *     .warden-app-avatar-row 必须在 90 帧采样里出现 0 帧)。
+ *     这里改用 `main:has(#warden-acctcard)` 作为条件 —— 账户卡片是模板的一部分,
+ *     首帧就在, 浏览器首帧即完成 :has() 判定, 不存在中间帧。
+ * ====================================================================== */
+main#main-content:has(#warden-acctcard) div:has(> dynamic-avatar) {
+  display: none !important;
+}
+/* 设置页页头右上角那个头像 —— 账户动作已经在下面的卡片里了 */
+main#main-content:has(#warden-acctcard) app-header header div:has(> app-account-menu) {
+  display: none !important;
+}
+
+/* ======================================================================
+ * J10. 设置页顶部的账户卡片 —— 标记在 account-card.component.html
+ *      桌面 + 移动**同一套排布**: 头像在左、名称 / 电子邮箱在右
+ *      (用户明确要求电脑网页端也改成这样)。
+ *      ⚠️ v9 之前整块被包在 @media (max-width:768px) 里 —— 桌面端卡片是 display:none,
+ *      头像和文字两个 rect 都塌成 0, 看起来像"叠在一起"。
+ *      显示与否改由组件的 @if(visible()) 决定(只在 /settings 分区渲染),
+ *      这里不再需要 `body:not(.warden-has-account-card)` 那种 body 类。
+ * ====================================================================== */
+app-account-card {
+  display: block;
+}
+
+.warden-acctcard {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  background: #f7f8fa;
+}
+.warden-acct-avatar {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  /* 头像是个 <button>(L4 是 <span>) —— 键盘可达, 也就带上了几个 UA 默认样式要清掉 */
+  padding: 0;
+  border: 0;
+  font-family: inherit;
+  border-radius: 50%;
+  background: #0f7b7b;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  /* 点头像即可换图 —— 不再需要应用那个只能改底色的「自定义」按钮 */
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 有本地头像图时: 铺满, 并把首字母藏掉(否则字会压在图上)。
+   注意这条必须比上面的 .warden-acct-avatar 更具体, 才能盖过 background 简写里的 image。 */
+body.warden-avatar-on .warden-acct-avatar {
+  background-image: var(--warden-avatar);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: transparent;
+}
+.warden-acct-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.warden-acct-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.warden-acct-mail {
+  font-size: 11.5px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 两个动作并到身份行里, 省掉原来那一整行 38px */
+.warden-acct-acts {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+}
+.warden-acct-acts button {
+  height: 30px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: #175ddc;
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.warden-acct-acts button:active {
+  background: rgba(0, 0, 0, 0.05);
+}
+.warden-acct-danger {
+  color: #c62828 !important;
+  border-color: rgba(198, 40, 40, 0.35) !important;
+}
+/* 隐藏的文件选择器: 点卡片上的头像即点它(L4 是 JS 建节点 + 内联样式) */
+.warden-acct-file {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .warden-acctcard {
+    background: #262b33;
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  .warden-acct-name {
+    color: #f3f4f6;
+  }
+  .warden-acct-mail {
+    color: #9ca3af;
+  }
+  .warden-acct-acts button {
+    color: #7aa7ff;
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+  .warden-acct-acts button:active {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .warden-acct-danger {
+    color: #ff8a8a !important;
+    border-color: rgba(255, 138, 138, 0.35) !important;
   }
 }

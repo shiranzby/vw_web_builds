@@ -1,0 +1,23 @@
+<!--
+  窄屏"二级导航" chips。DOM 标记（#warden-subnav / .warden-subnav / a[data-href] /
+  .warden-subnav-on）有意与 L4 注入的那份保持一致，这样 tests/mobile-regression.mjs
+  的 G5（tools 3 项 / settings 5 项、挂在 main 内、各项等宽）不需要改。
+
+  ⚠️ 文案是**中文字面量**，没走 i18n —— 与 mobile-tab-bar 同理：
+     L4 上你验收过的就是这几个词，迁移的验收标准是「功能等价」；
+     而且上游 zh_CN 的键名与这里的短标签并不一一对应（见 mobile-tab-bar.component.html 的说明）。
+-->
+@if (items().length > 0) {
+  <nav id="warden-subnav" class="warden-subnav">
+    @for (item of items(); track item.route) {
+      <a
+        [routerLink]="item.route"
+        [attr.data-href]="'#' + item.route"
+        [class.warden-subnav-on]="isActive(item.route)"
+        [attr.aria-current]="isActive(item.route) ? 'page' : null"
+      >
+        {{ item.label }}
+      </a>
+    }
+  </nav>
+}
