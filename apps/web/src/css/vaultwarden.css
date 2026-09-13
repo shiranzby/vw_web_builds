@@ -343,6 +343,156 @@ bit-nav-logo bit-nav-item .bwi-shield {
 }
 
 /* ======================================================================
+ * J7 / J14 / A 段. 列表「选择模式」+「名称」表头工具行的「选择」胶囊
+ *
+ *   迁移自 L4 `custom/custom.css` 的 A 段(塌缩复选框/站标列) 与 C 段的工具行部分。
+ *   L4 是运行期做的: custom.js 往「名称」th 里 appendChild 一个 #warden-headbar,
+ *   再切 body 上的 .warden-selecting 放/收复选框列。源码层改由组件自己持有状态 ——
+ *   .warden-headbar 是 vault-items.component.html 模板的一部分, 选择态由
+ *   [class.warden-selecting] 绑定在 <bit-table> 上, DOM 注入与 body 全局类都不需要了。
+ *
+ *   ★ 与 L4 的**有意差异**(用户决策): 整段只作用于窄屏。
+ *     L4 的 A 段是全局作用域 —— 桌面端复选框列同样被塌成 0 宽, 于是桌面端必须靠
+ *     这颗「选择」胶囊才能进选择模式; 用户真机上看到"桌面上多出一颗选择"就是这个
+ *     泄漏(截图实测 1280×900 下 th 文本 = "名称 选择")。
+ *     改法: A 段塌缩 + 胶囊一起收进 @media (max-width: 768px), 桌面端回到官方原样。
+ *     ⚠️ 所以**不能只把胶囊隐藏掉** —— 那样桌面端会连带失去唯一的批量选择入口。
+ *
+ *   组织保险库管理页不参与: 那一侧 [showAdminActions]="true", 「名称」th 是
+ *   bitSortable, 内容被包进 <button>(见 libs/components/src/table/sortable.component.ts
+ *   的 template), 再塞一颗 <button> 进去是非法嵌套; L4 那个"按 th 直属文本节点认列名"
+ *   的 nameTh() 在那儿本来就找不到列。所以标记类 .warden-selectable 只在个人保险库
+ *   的 <bit-table> 上挂, 该页保持官方行为(复选框列常显)。
+ *
+ *   配色说明: 胶囊是照抄 L4 的硬编码色(与 G 段同类技术债), 因为要跟旁边同样被压成
+ *   28px 胶囊的官方「新增」按钮在观感上对齐 —— 而那颗按钮的配色由应用主题决定。
+ * ====================================================================== */
+.warden-headbar {
+  /* 宽屏不渲染这条工具行 */
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* 胶囊的定位祖先 */
+  .warden-selectable thead tr > th.warden-name-th {
+    position: relative;
+  }
+
+  /* J7. 「选择」胶囊: 贴「名称」列的右缘 */
+  .warden-headbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    white-space: nowrap;
+  }
+  .warden-select-toggle {
+    box-sizing: border-box !important;
+    height: 28px !important;
+    min-height: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 0 11px !important;
+    border-radius: 999px !important;
+    font-family: inherit !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    font-weight: 500 !important;
+    border: 1px solid rgba(0, 0, 0, 0.22) !important;
+    background: transparent !important;
+    color: var(--color-text-secondary, #4b5563) !important;
+    cursor: pointer;
+  }
+  .warden-select-toggle svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .warden-select-toggle.warden-select-on {
+    border-color: #175ddc !important;
+    color: #175ddc !important;
+    background: rgba(23, 93, 220, 0.08) !important;
+  }
+
+  /* A 段. 默认塌缩「复选框列」与「站标图标列」; 进入选择模式只放出复选框列。
+     <table> 是 table-fixed, 列宽只由 <thead> 决定 —— 所以收缩列只能改 th 的宽度,
+     隐藏单元格内容一律用 visibility(display:none 会让这一列重算, 把名称列挤变形)。 */
+  .warden-selectable thead th.tw-w-24 {
+    width: 0 !important;
+    padding: 0 !important;
+  }
+  .warden-selectable thead th.tw-w-24 > * {
+    visibility: hidden !important;
+  }
+  .warden-selectable tr[appvaultcipherrow] td:nth-child(1),
+  .warden-selectable tr[appvaultcipherrow] td:nth-child(2) {
+    padding: 0 !important;
+    /* 这两个 td 带 tw-min-w-fit(min-width:fit-content), 不覆盖就收不到 0 */
+    min-width: 0 !important;
+  }
+  .warden-selectable tr[appvaultcipherrow] td:nth-child(1) > *,
+  .warden-selectable tr[appvaultcipherrow] td:nth-child(2) > * {
+    visibility: hidden !important;
+  }
+
+  /* 选择模式: 放出复选框列。th 是 colspan=2(复选框 + 站标), 把第 2 个 td 压到 0,
+     32px 就全给复选框列 —— 否则那列内容虽 hidden 仍占 22px, 左侧会留一段空白。
+     ⚠️ 这里不能只写 width: 32px。table-fixed 下"名称"列是百分比(60%), 浏览器会把
+        富余宽度按各 px 列的指定值**按比例**再分给复选框列和操作列 —— 实测复选框列
+        因此被抬到 56.78px(操作列同时被压到 85px), 名字列还会整体右移。做法:
+        · 把操作列显式钉在收起态的实测宽度(142px) —— 对当前布局是恒等变换, 不会
+          改变收起态的任何像素, 只是让算术不再溢出到复选框列;
+        · 再把"名称"列放开成 auto, 让它吃掉剩余的 181px。
+        结果: 复选框列正好 32px(与 L4 同值), 名字列右移 32px, ⋯ 原地不动。 */
+  .warden-selectable thead tr > th.tw-w-12 {
+    width: 142px !important;
+  }
+  .warden-selectable.warden-selecting thead th.tw-w-24 {
+    width: 32px !important;
+  }
+  .warden-selectable.warden-selecting thead tr > th.warden-name-th {
+    width: auto !important;
+  }
+  .warden-selectable.warden-selecting thead th.tw-w-24 > * {
+    visibility: visible !important;
+  }
+  .warden-selectable.warden-selecting tr[appvaultcipherrow] td:nth-child(1) {
+    padding-left: 4px !important;
+    padding-right: 0 !important;
+  }
+  .warden-selectable.warden-selecting tr[appvaultcipherrow] td:nth-child(2) {
+    width: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .warden-selectable.warden-selecting tr[appvaultcipherrow] td:nth-child(1) > * {
+    visibility: visible !important;
+  }
+
+  /* J14. 表头右侧的「选项」三点: 菜单里只有作用于"已选中条目"的动作, 平时常显没有
+     意义 —— 窄屏默认藏起来, 进选择模式再放出。必须 visibility, 理由同上。
+     ⚠️ 只在窄屏 + .warden-selectable 内: 桌面端的 ⋯ 是官方入口, 不能藏。
+     用 :last-child 而不是 L4 的 button[aria-label="选项"] —— 后者依赖中文文案,
+     换成英文界面就直接失效。 */
+  .warden-selectable thead tr > th:last-child button {
+    visibility: hidden !important;
+  }
+  .warden-selectable.warden-selecting thead tr > th:last-child button {
+    visibility: visible !important;
+  }
+}
+
+/* ======================================================================
  * K. 窄屏: 对话框压缩(新增/编辑条目、Send 撰写)
  *    H 段的规则全部限定在 main#main-content 里, 而对话框挂在内层 grid 的
  *    "浮层列"上, 一条都没命中 —— 于是"新增登录"的内容一路排到 1000px 以上,

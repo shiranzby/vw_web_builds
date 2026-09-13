@@ -4,7 +4,12 @@
   class="tw-transition-[padding-bottom] tw-duration-300 tw-ease-in-out"
   [ngClass]="batchBarService?.barVisible() ? 'tw-pb-[7.5rem]' : 'tw-pb-8'"
 >
-  <bit-table [dataSource]="dataSource" layout="fixed">
+  <bit-table
+    [dataSource]="dataSource"
+    layout="fixed"
+    [class.warden-selectable]="!showAdminActions"
+    [class.warden-selecting]="selecting()"
+  >
     <ng-container header>
       <tr>
         <th bitCell class="tw-w-24 tw-whitespace-nowrap" colspan="2">
@@ -30,8 +35,26 @@
         }
         <!-- Individual vault -->
         @else {
-          <th bitCell [class]="showExtraColumn ? 'tw-w-3/5' : 'tw-w-full'">
+          <th bitCell class="warden-name-th" [ngClass]="showExtraColumn ? 'tw-w-3/5' : 'tw-w-full'">
             {{ "name" | i18n }}
+            <!-- 自托管定制(J7/J14): 窄屏「选择」胶囊。宽屏整条 .warden-headbar 不显示,
+                 所以桌面端与官方一致。组织保险库管理页用的是上面那个 bitSortable 分支,
+                 不会渲染到这里(那里 th 的内容被包在 <button> 里, 不能嵌套按钮)。 -->
+            <div class="warden-headbar">
+              <button
+                type="button"
+                class="warden-select-toggle"
+                [class.warden-select-on]="selecting()"
+                [attr.aria-pressed]="selecting()"
+                (click)="toggleSelecting()"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 7l4.5 5L4 17" />
+                  <path d="M12 19h8" />
+                </svg>
+                <span>{{ (selecting() ? "cancel" : "select") | i18n }}</span>
+              </button>
+            </div>
           </th>
         }
         @if (showOwner) {

@@ -1,7 +1,7 @@
 // FIXME: Update this file to be type safe and remove this and next line
 // @ts-strict-ignore
 import { SelectionModel } from "@angular/cdk/collections";
-import { Component, EventEmitter, Input, Output, inject } from "@angular/core";
+import { Component, EventEmitter, Input, Output, inject, signal } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import {
   Observable,
@@ -170,6 +170,28 @@ export class VaultItemsComponent<C extends CipherViewLike> {
   );
   get selection(): SelectionModel<VaultItem<C>> {
     return this.batchBarService?.selection ?? this._localSelection;
+  }
+
+  /**
+   * 自托管定制(J7/J14): 窄屏「选择」胶囊的展开态。
+   *
+   * 官方 8.0 的底部批量条受 `PM37785_VaultBatchBar` 开关控制, 自托管后端没有开启
+   * (线上 `/api/config` 的 featureStates 里没有这一项), 所以这里只负责"放出复选框列
+   * + 给表头 ⋯ 让位", 不另建底部操作条 —— 等价 L4 §8 在 v10 之后的形态。
+   *
+   * 桌面端不使用这个状态: 那里的复选框列本来就常显(见 vaultwarden.css 的 J7 段),
+   * 胶囊也不会被渲染出来。
+   */
+  protected readonly selecting = signal(false);
+
+  protected toggleSelecting(): void {
+    const next = !this.selecting();
+    this.selecting.set(next);
+
+    if (!next) {
+      // 退出选择模式时清空选中项(等价 L4 setSelecting(false) 里的 uncheckAll())
+      this.selection.clear();
+    }
   }
   protected canDeleteSelected$: Observable<boolean>;
   protected canRestoreSelected$: Observable<boolean>;
