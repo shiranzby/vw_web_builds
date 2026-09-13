@@ -79,7 +79,7 @@ bit-nav-logo bit-nav-item .bwi-shield {
  * shypwd mobile adaptation
  *
  * Migrated from the former runtime patch layer (warden-worker `custom/custom.css`
- * sections H / K / M). These rules are global-scope by nature: their targets
+ * sections F / H / K / M). These rules are global-scope by nature: their targets
  * (`main#main-content` shell, `bit-dialog` / `.cdk-overlay-pane`,
  * `ng-dropdown-panel`) live outside any Angular component subtree, so putting
  * them in app SCSS would require ::ng-deep / ViewEncapsulation.None — worse.
@@ -193,6 +193,98 @@ bit-nav-logo bit-nav-item .bwi-shield {
   }
   main#main-content div.tw-flex.tw-flex-wrap:has(> bit-form-control) bit-form-control {
     margin-bottom: 0 !important;
+  }
+}
+
+/* ======================================================================
+ * F. 窄屏布局: 保险库页由「左右分栏」改为「上下堆叠」
+ *
+ *    迁移自 custom.css 的 F 段, 但**只搬了不依赖运行期 JS 的部分**。
+ *    原 F 段还有一条
+ *        @media (max-width:768px) { app-side-nav, bit-side-nav { display:none } }
+ *    这里**刻意没有搬**: 应用自己的导航开关按钮就长在 `bit-side-nav` 内部
+ *    (libs/components/src/navigation/side-nav.component.html: `sideNavService.toggle()`),
+ *    窄屏隐藏整个导航 = 失去唯一的导航入口。L4 之所以敢这么写, 是因为它另建了
+ *    底部标签栏来替代(对应清单里的 J17)。在标签栏落地之前, 这条不能动。
+ * ====================================================================== */
+@media (max-width: 768px) {
+  /* F1. 锁住横向溢出。应用给 <main> 加了 Tailwind 的 tw-min-w-96(min-width:24rem
+       =384px), 而 360–430px 的手机屏比它还窄 —— 不松开这一条, 每个页面都会
+       横向溢出。桌面端不写这条, 行为完全不变。
+      (另一半在源码里: layout.component.ts 的网格列高按容器宽度封顶。只改这一半
+       的话, 网格轨道仍会把列撑到 384px, 溢出依旧。) */
+  main#main-content {
+    min-width: 0 !important;
+  }
+
+  /* F2. 保险库页内部原本是「筛选(1/4) + 列表(3/4)」的横向 flex
+      (apps/web/src/app/vault/individual-vault/vault.component.html:
+       div.tw-flex.tw-flex-row > div.tw-basis-1/4 + div.tw-basis-3/4)。
+      窄屏下 1/4 只剩约 67px, 筛选栏被压成一条, 完全没法点。
+      改为纵向堆叠, 筛选整条置顶。 */
+  main#main-content div.tw-flex.tw-flex-row:has(app-vault-filter) {
+    flex-direction: column !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  /* tw-basis-1/4 / tw-max-w-1/4 必须一起顶掉, 否则纵向堆叠后仍只有 25% 宽 */
+  main#main-content div.tw-flex.tw-flex-row:has(app-vault-filter) > div:has(> app-vault-filter),
+  main#main-content div.tw-flex.tw-flex-row:has(app-vault-filter) > div:has(> app-vault-items) {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  main#main-content div.tw-flex.tw-flex-row:has(app-vault-filter) > div:has(> app-vault-filter) {
+    flex: 0 0 auto !important;
+  }
+  main#main-content div.tw-flex.tw-flex-row:has(app-vault-filter) > div:has(> app-vault-items) {
+    flex: 1 1 auto !important;
+  }
+
+  /* F3. 筛选面板: 整宽 + 高度上限内滚。
+     展开态下 11 个筛选项竖排比一屏还长, 不设上限会把下方的条目列表整个推出屏幕。
+     内边距由 H6 管, 这里只管高度与裁剪。
+     (「收成一个按钮、点开才展开」是清单里的 J9, 需要组件状态, 不在本步。) */
+  main#main-content app-vault-filter > div > div > div.tw-p-5 {
+    display: block !important;
+    max-height: 58vh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  main#main-content app-vault-filter bit-search {
+    display: block !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* F4. 通用兜底: 窄屏任何页面都不该出现横向滚动条 */
+  html,
+  body {
+    overflow-x: hidden;
+  }
+  body.layout_frontend {
+    min-width: 0 !important;
+  }
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  /* 对话框里的 tw-max-w-* 会按桌面尺寸算, 窄屏下顶掉。
+     ⚠️ 这里刻意不写 bit-dialog / .cdk-overlay-pane 的 max-width —— K0 已经把它们
+        设成 100vw 了, 而 F4 原稿是 96vw(在 390px 屏上会变成 374px 并左贴边,
+        右侧空 16px, 不对称)。后写的规则会覆盖 K0, 搬过来反而是退步。 */
+  bit-dialog [class*="tw-max-w"] {
+    max-width: 100% !important;
   }
 }
 

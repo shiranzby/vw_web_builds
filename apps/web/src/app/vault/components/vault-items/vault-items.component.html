@@ -90,7 +90,10 @@
               @if (bulkMoveAllowed) {
                 <button type="button" bitMenuItem (click)="bulkMoveToFolder()">
                   <i class="bwi bwi-fw bwi-folder" aria-hidden="true"></i>
-                  {{ "addToFolder" | vfo1I18n: "addToMyFolder" }}
+                  <!-- 自托管定制: 与行内菜单同口径。官方这里是 addToFolder(中文「添加到文件夹」),
+                       比同菜单里的其他项长一倍; 菜单项本身就是"动作 + 对象", 用名词足够。
+                       行内菜单 (vault-cipher-row) 用的是同一个 key, 两处保持一致。 -->
+                  {{ "folder" | i18n }}
                 </button>
               }
               @if (showAdminActions && showBulkEditCollectionAccess) {

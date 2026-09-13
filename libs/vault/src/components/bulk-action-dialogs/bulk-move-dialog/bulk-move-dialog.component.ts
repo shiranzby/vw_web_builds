@@ -78,7 +78,9 @@ export class BulkMoveDialogComponent implements OnInit {
     const activeUserId = await firstValueFrom(this.accountService.activeAccount$.pipe(getUserId));
     this.folders$ = this.folderService.folderViews$(activeUserId);
     this.formGroup.patchValue({
-      folderId: (await firstValueFrom(this.folders$))[0].id,
+      // folderViews$ 在没有文件夹时返回空数组, 原来的 [0].id 会直接抛错
+      // (批量移动入口也能踩到)。为空时不预选, 表单值保持 "", 也就是"不放入文件夹"。
+      folderId: (await firstValueFrom(this.folders$))[0]?.id,
     });
   }
 

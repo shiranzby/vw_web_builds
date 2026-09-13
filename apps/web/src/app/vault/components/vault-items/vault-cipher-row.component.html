@@ -299,6 +299,15 @@
             {{ (cipher.favorite ? "unfavorite" : "favorite") | i18n }}
           </button>
         }
+        <!-- 自托管定制: 「文件夹」。文案取 i18n 的 folder(中文 = 文件夹), 比官方的
+             addToFolder(添加到文件夹) 短一截, 与相邻的 收藏/编辑/附件/克隆/归档/删除
+             是同一个量级; 位置按习惯放在「收藏」之下、「编辑」之上。 -->
+        @if (showFolderAssignment) {
+          <button bitMenuItem type="button" (click)="moveToFolder()">
+            <i class="bwi bwi-fw bwi-folder" aria-hidden="true"></i>
+            {{ "folder" | i18n }}
+          </button>
+        }
         @if (!isDeleted && canEditCipher) {
           <button bitMenuItem type="button" (click)="editCipher()">
             <i class="bwi bwi-fw bwi-pencil-square" aria-hidden="true"></i>

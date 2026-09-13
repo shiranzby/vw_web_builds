@@ -503,6 +503,20 @@ export class VaultCipherRowComponent<C extends CipherViewLike> implements OnInit
     this.onEvent.emit({ type: "assignToCollections", items: [this.cipher] });
   }
 
+  /* 自托管定制: 「文件夹」。
+     官方行内菜单里只有 复制/收藏/编辑/附件/克隆/归档/删除 —— 想把某一条移到文件夹,
+     得先去勾选它、再用表格上方的批量「移动」。这里补一个单条入口。
+     实现只抛一个事件就够: 父组件 (individual-vault/vault.component.ts) 已经有
+     `case "moveToFolder"`, 它会走 openBulkMoveDialog + 主密码复验 + 列表刷新。 */
+  protected moveToFolder() {
+    this.onEvent.emit({ type: "moveToFolder", items: [this.cipher] });
+  }
+
+  /** 回收站里移动没有意义; 组织条目还需要编辑权限 —— 与上面的「编辑」同口径。 */
+  protected get showFolderAssignment(): boolean {
+    return !CipherViewLikeUtils.isDeleted(this.cipher) && this.canEditCipher;
+  }
+
   async openUri(selectedUri: string) {
     const activeUserId = await firstValueFrom(this.accountService.activeAccount$.pipe(getUserId));
     await this.cipherService.updateLastLaunchedDate(this.cipher.id as CipherId, activeUserId);

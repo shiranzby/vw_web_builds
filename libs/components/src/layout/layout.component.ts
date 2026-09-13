@@ -33,6 +33,21 @@ const MAIN_MIN_WIDTH_REM = 24;
  *  Derived from tw-w-[3.75rem] + tw-mx-0.5 margins in side-nav.component.html. */
 const SIDERAIL_WIDTH_REM = 4;
 
+/**
+ * Col 2's (main) minimum width, capped at the container width.
+ *
+ * `MAIN_MIN_WIDTH_REM` keeps the three-panel layout readable on desktop, but a phone
+ * viewport (320–430px) is narrower than 24rem: an uncapped floor would make the grid
+ * wider than its own container and force horizontal overflow on every page. Capping
+ * it at the container width lets col 2 shrink to fit. Desktop is unaffected — the
+ * container is far wider than 24rem there — and before the first measurement (0) the
+ * uncapped floor is kept, so the initial paint behaves exactly as before.
+ */
+function resolveMainMinWidthPx(containerWidthPx: number): number {
+  const floor = MAIN_MIN_WIDTH_REM * getRootFontSizePx();
+  return Math.min(floor, containerWidthPx > 0 ? containerWidthPx : floor);
+}
+
 // FIXME(https://bitwarden.atlassian.net/browse/CL-764): Migrate to OnPush
 // eslint-disable-next-line @angular-eslint/prefer-on-push-component-change-detection
 @Component({
@@ -118,7 +133,7 @@ export class LayoutComponent {
     const rootFontSizePx = getRootFontSizePx();
     const siderailWidthPx = SIDERAIL_WIDTH_REM * rootFontSizePx;
     const drawerMinWidthPx = drawerSizeToWidthRem.small * rootFontSizePx;
-    const mainMinWidthPx = MAIN_MIN_WIDTH_REM * rootFontSizePx;
+    const mainMinWidthPx = resolveMainMinWidthPx(containerWidth);
 
     // Push vs overlay: switch to overlay only when the minimum push width won't fit.
     // The shrink zone between the declared max-width and the minimum is handled
@@ -183,7 +198,7 @@ export class LayoutComponent {
         const rootFontSizePx = getRootFontSizePx();
         const containerWidth = container.clientWidth;
         const siderailPx = SIDERAIL_WIDTH_REM * rootFontSizePx;
-        const mainMinPx = MAIN_MIN_WIDTH_REM * rootFontSizePx;
+        const mainMinPx = resolveMainMinWidthPx(containerWidth);
         const navWidthPx = this.sideNavService.widthRem() * rootFontSizePx;
         const drawerMinPx = drawerSizeToWidthRem.small * rootFontSizePx;
 
