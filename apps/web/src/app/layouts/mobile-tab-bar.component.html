@@ -22,15 +22,18 @@
   </a>
 
   <!--
-    「验证码」：L4 里它也是指向 /vault（`{ route: "/vault", auth: true }`），再由
-    `openAuthView()` 在密码库页上盖一层自注入的验证码视图 —— 也就是说它的**目标路由**
-    本来就和我们这里一致。
+    「验证码」：L4 里它指向 /vault（`{ route: "/vault", auth: true }`），再由
+    `openAuthView()` 在密码库页上盖一层自注入的验证码视图 —— 那层视图就是 J16。
 
-    那一层视图是 J16（独立「验证码」页）要迁的东西，尚未落地，所以这里暂时只做导航、
-    不点亮选中态（`isActive('totp')` 在 /totp 路由出现前恒为 false）。
-    J16 落地后把这个 routerLink 改成 /totp 即可，选中态会自己生效。
+    J16 已落地为真路由 `/totp`（`vault/totp-page`），所以这里直接指过去，
+    选中态由 `isActive('totp')` 判定并自动生效（不再需要 L4 的 `updateTabbar()` 手工高亮）。
   -->
-  <a routerLink="/vault" data-tab="totp" [class.warden-tab-active]="isActive('totp')">
+  <a
+    routerLink="/totp"
+    data-tab="totp"
+    [class.warden-tab-active]="isActive('totp')"
+    [attr.aria-current]="isActive('totp') ? 'page' : null"
+  >
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="8.3" />
       <path d="M12 7.4V12l3.1 1.9" />

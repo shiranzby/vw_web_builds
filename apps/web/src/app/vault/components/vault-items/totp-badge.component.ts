@@ -8,6 +8,7 @@ import {
   CipherViewLike,
   CipherViewLikeUtils,
 } from "@bitwarden/common/vault/utils/cipher-view-like-utils";
+import { I18nPipe } from "@bitwarden/ui-common";
 
 /** 剩余秒数低于该值时整体转成"即将过期"配色。 */
 const LOW_THRESHOLD_SECONDS = 5;
@@ -51,13 +52,16 @@ type TotpBadgeState = {
  * 刻意保留的一处差异: 点击复制**不做 premium 门禁**。官方
  * `CopyCipherFieldService.copy(..., "totp")` 会先过 `totpAllowed()`, 非会员点下去是静默失败;
  * 而 L4 的语义是"徽章常显、随时可复制", 所以这里只借官方的剪贴板原语。
+ *
+ * 声明为 standalone: 保险库列表(经 `vault-items.module.ts`)与独立「验证码」页
+ * (`vault/totp-page`)都要用它, 后者是路由级组件、不挂在任何 NgModule 的 declarations 里。
+ * ⚠️ 模板里的 `| i18n` 因此不再由宿主模块提供 —— 必须自己 import `I18nPipe`,
+ *    否则编译期报 NG8004。其它绑定(@if / [class.x] / [style.width] / 事件)都是内置的。
  */
 @Component({
   selector: "vault-totp-badge",
   templateUrl: "./totp-badge.component.html",
-  // 本目录的组件都是 NgModule 里声明的(见 vault-items.module.ts); Angular 19 起
-  // standalone 是默认值, 所以这里必须显式关掉。
-  standalone: false,
+  imports: [I18nPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VaultTotpBadgeComponent {

@@ -1,0 +1,39 @@
+<!--
+  独立「验证码」页。标记沿用 L4（`custom/custom.js` §9）的类名 —— 样式都在
+  `css/vaultwarden.css` 的「E 段」, 段标记: E. 独立「验证码」页
+
+  ⚠️ 与 L4 唯一的结构差异: L4 是靠 `body.warden-authview-on` 开关的 fixed 覆盖层,
+     外层 `.warden-authview` 自带 `position:fixed; inset:0; background:#fff`。
+     源码层它是**真路由**, 已经落进 `main#main-content` 里, 所以 E 段把外层那几条
+     定位/底色声明去掉了(否则会二次铺满且盖住底栏)。内层卡片列表逐条搬。
+-->
+<h1 class="warden-auth-title">验证码</h1>
+
+<input
+  type="search"
+  class="warden-auth-search"
+  placeholder="搜索条目"
+  aria-label="搜索条目"
+  [value]="query()"
+  (input)="onSearch($event)"
+/>
+
+<div class="warden-auth-list">
+  @if (items().length) {
+    <div class="warden-auth-card">
+      @for (item of items(); track item.id) {
+        <div class="warden-auth-row">
+          <div class="warden-auth-meta">
+            <div class="warden-auth-name">{{ item.name }}</div>
+            <div class="warden-auth-user">{{ item.login?.username || "—" }}</div>
+          </div>
+          <vault-totp-badge class="warden-auth-badge" [cipher]="item"></vault-totp-badge>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="warden-auth-empty">
+      {{ total() ? "没有匹配的条目" : "还没有带验证码的条目" }}
+    </div>
+  }
+</div>

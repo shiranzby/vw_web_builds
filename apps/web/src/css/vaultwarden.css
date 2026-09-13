@@ -79,7 +79,7 @@ bit-nav-logo bit-nav-item .bwi-shield {
  * shypwd mobile adaptation
  *
  * Migrated from the former runtime patch layer (warden-worker `custom/custom.css`
- * sections A / B / F / H / I / J / J2 / J3 / J7 / J9 / J10 / J14 / K / M / G). These
+ * sections A / B / E / F / H / I / J / J2 / J3 / J7 / J9 / J10 / J14 / K / M / G). These
  * rules are global-scope by nature: their targets (`main#main-content` shell, `bit-dialog` /
  * `.cdk-overlay-pane`, `ng-dropdown-panel`) live outside any Angular component subtree,
  * so putting them in app SCSS would require ::ng-deep / ViewEncapsulation.None — worse.
@@ -89,8 +89,8 @@ bit-nav-logo bit-nav-item .bwi-shield {
  * specificity with both sides using !important, these declarations win.
  *
  * Most of what is below is inside `@media (max-width: 768px)`; the exceptions are
- * M (ng-select hardening), G (tab bar), B (行内 TOTP 徽章), I's account-card hide
- * rules (J3) and the J10 account card itself — those are deliberately desktop-visible.
+ * M (ng-select hardening), G (tab bar), B (行内 TOTP 徽章), E (验证码页), I's account-card
+ * hide rules (J3) and the J10 account card itself — those are deliberately desktop-visible.
  * ========================================================================== */
 
 /* ======================================================================
@@ -1254,5 +1254,123 @@ table thead th.tw-w-12 {
   }
   .warden-totp-digits {
     font-size: 12.5px !important;
+  }
+}
+
+/* ======================================================================
+ * E 段. 独立「验证码」页 —— 标记在 vault/totp-page/totp-page.component.html
+ *
+ *   一片「标题 + 搜索框 + 一张卡片」的条目列表, 每行的右侧复用 B 段的 TOTP 徽章
+ *   (`<vault-totp-badge>`), 与密码库列表里的是同一个组件、同一套样式。
+ *
+ *   ⚠️ 与 L4 的结构差异(这一整段里唯一实质性的改动):
+ *      L4 那版外层是 `.warden-authview { position:fixed; inset:0; background:#fff }`,
+ *      由 `body.warden-authview-on` 开关, 盖在密码库页上方; 窄屏还要 `bottom:62px`
+ *      给它让开底栏。源码层它是**真路由** `/totp`(见 oss-routing.module.ts), 已经落进
+ *      `main#main-content` 里, 所以:
+ *        · 去掉外层那几条定位/底色声明 —— 留着会二次铺满并盖住底栏;
+ *        · 去掉 `bottom` 让位 —— 窄屏留白已由 H1 的 `main#main-content{padding-bottom:74px}`
+ *          统一处理(74 > G 段底栏的 62)。
+ *      内层(Title / Search / Card / Row / Meta / Name / User / Empty)逐条照搬, 含深色分支。
+ *
+ *   ⚠️ 深色分支跟的是**系统**深色偏好(`prefers-color-scheme`), 不是应用内主题 ——
+ *      与 G 段同样刻意沿用 L4 的写法, 换成 `--color-*` 变量属于观感改进, 不夹带进迁移。
+ *
+ *   注: `.warden-auth-list` 只是个容器钩子, L4 里也没有给它任何规则, 这里保持一致。
+ *   `.warden-auth-count`(L4 里那句空跑的 `document.querySelector`)已确认是死代码, 不迁。
+ * ====================================================================== */
+.warden-auth-title {
+  font-size: 22px;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 14px;
+}
+.warden-auth-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #ffffff;
+  color: #111827;
+  margin-bottom: 16px;
+}
+.warden-auth-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.warden-auth-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border-bottom: 1px solid #f0f1f3;
+}
+.warden-auth-row:last-child {
+  border-bottom: none;
+}
+.warden-auth-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.warden-auth-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.warden-auth-user {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* ⚠️ L4 把 `.warden-auth-badge` 加在 `.warden-totp-code` 上(那时徽章就是这个元素);
+   源码层徽章外面多了 `<vault-totp-badge>` 宿主, 所以"不参与伸缩"要落在宿主上、
+   宽度约束要落到内层盒体上 —— 写成 `flex/min-width` 同一条会够不到内层(踩过一次:
+   flex 生效但 min-width 被 `.warden-totp-code` 的 84px 盖过, 徽章比 L4 窄 12px)。 */
+vault-totp-badge.warden-auth-badge {
+  flex: 0 0 auto;
+}
+vault-totp-badge.warden-auth-badge .warden-totp-code {
+  min-width: 96px;
+  margin-right: 0;
+}
+.warden-auth-empty {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 48px 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .warden-auth-title {
+    color: #f3f4f6;
+  }
+  .warden-auth-search {
+    background: #262b33;
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #f3f4f6;
+  }
+  .warden-auth-card {
+    background: #262b33;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .warden-auth-row {
+    border-bottom-color: rgba(255, 255, 255, 0.07);
+  }
+  .warden-auth-name {
+    color: #f3f4f6;
+  }
+  .warden-auth-user {
+    color: #9ca3af;
   }
 }

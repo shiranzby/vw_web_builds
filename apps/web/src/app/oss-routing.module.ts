@@ -97,6 +97,7 @@ import { BrowserExtensionPromptComponent } from "./vault/components/browser-exte
 import { SetupExtensionComponent } from "./vault/components/setup-extension/setup-extension.component";
 import { setupExtensionRedirectGuard } from "./vault/guards/setup-extension-redirect.guard";
 import { VaultModule } from "./vault/individual-vault/vault.module";
+import { TotpPageComponent } from "./vault/totp-page/totp-page.component";
 
 const routes: Routes = [
   // These need to be placed at the top of the list prior to the root
@@ -648,6 +649,14 @@ const routes: Routes = [
         path: "vault",
         canActivate: [premiumInterestRedirectGuard, setupExtensionRedirectGuard],
         loadChildren: () => VaultModule,
+      },
+      // 独立「验证码」页(自托管定制, 迁移自 L4 的 J16)。挂在 UserLayoutComponent 下,
+      // 于是自动继承上面那条 `canActivate: [deepLinkGuard(), authGuard]`, 并落进
+      // bit-layout 的 main#main-content —— 与 L4 的 fixed 覆盖层不同, 它是一个正常页面。
+      // 入口是窄屏底部标签栏的第 2 项(mobile-tab-bar.component.html)。
+      {
+        path: "totp",
+        component: TotpPageComponent,
       },
       {
         path: "sends",

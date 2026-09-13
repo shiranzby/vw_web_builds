@@ -47,13 +47,10 @@ import { VaultItemsComponent } from "./vault-items.component";
     IconModule,
     Vfo1I18nPipe,
     Vfo1IconPipe,
-  ],
-  declarations: [
-    VaultItemsComponent,
-    VaultCipherRowComponent,
-    VaultCollectionRowComponent,
+    // standalone, 不参与本模块的 declarations —— 见 totp-badge.component.ts 头部注释
     VaultTotpBadgeComponent,
   ],
+  declarations: [VaultItemsComponent, VaultCipherRowComponent, VaultCollectionRowComponent],
   exports: [VaultItemsComponent],
 })
 export class VaultItemsModule {}
