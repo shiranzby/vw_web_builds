@@ -72,6 +72,21 @@ export class VaultFilterComponent implements OnInit, OnDestroy {
 
   isLoaded = false;
 
+  /**
+   * 自托管定制(J9): 窄屏筛选抽屉的展开态。
+   *
+   * 默认**收起** —— 窄屏下 11 个筛选区块竖排比一屏还高, 默认展开会把条目列表挤出首屏。
+   * 宽屏不受影响: 收起规则写在 `@media (max-width: 768px)` 里, 开关本身也只在窄屏显示
+   * (见 `apps/web/src/css/vaultwarden.css` 的 "J9" 段), 所以桌面端始终是官方那套展开态。
+   *
+   * 选完某个筛选后自动收起 —— 见下面四个 apply* 方法(与 L4 的行为一致)。
+   */
+  filterSectionsExpanded = false;
+
+  toggleFilterSections(): void {
+    this.filterSectionsExpanded = !this.filterSectionsExpanded;
+  }
+
   protected destroy$: Subject<void> = new Subject<void>();
   get filtersList() {
     return this.filters ? Object.values(this.filters) : [];
@@ -196,6 +211,7 @@ export class VaultFilterComponent implements OnInit, OnDestroy {
   }
 
   applyOrganizationFilter = async (orgNode: TreeNode<OrganizationFilter>): Promise<void> => {
+    this.filterSectionsExpanded = false; // J9: 选完自动收起抽屉(窄屏)
     const filter = this.activeFilter;
     if (orgNode?.node.id === "AllVaults") {
       filter.resetOrganization();
@@ -208,18 +224,21 @@ export class VaultFilterComponent implements OnInit, OnDestroy {
   };
 
   applyTypeFilter = async (filterNode: TreeNode<CipherTypeFilter>): Promise<void> => {
+    this.filterSectionsExpanded = false; // J9: 选完自动收起抽屉(窄屏)
     const filter = this.activeFilter;
     filter.resetFilter();
     filter.selectedCipherTypeNode = filterNode;
   };
 
   applyFolderFilter = async (folderNode: TreeNode<FolderFilter>): Promise<void> => {
+    this.filterSectionsExpanded = false; // J9: 选完自动收起抽屉(窄屏)
     const filter = this.activeFilter;
     filter.resetFilter();
     filter.selectedFolderNode = folderNode;
   };
 
   applyCollectionFilter = async (collectionNode: TreeNode<CollectionFilter>): Promise<void> => {
+    this.filterSectionsExpanded = false; // J9: 选完自动收起抽屉(窄屏)
     const filter = this.activeFilter;
     filter.resetFilter();
     filter.selectedCollectionNode = collectionNode;

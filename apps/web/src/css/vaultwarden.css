@@ -224,7 +224,9 @@ bit-nav-logo bit-nav-item .bwi-shield {
         实测 6 个路由(保险库/发送/生成器/报告/账户设置/偏好设置)在 375px 下
         main.scrollWidth 均等于 clientWidth, 零横溢。且 <main> 官方就是
         `tw-overflow-auto`, 保留 auto 比 hidden 更稳: 万一将来某页溢出, auto 至少
-        让内容可滚可达, hidden 会直接裁掉。故不加。 */
+        让内容可滚可达, hidden 会直接裁掉。故不加。
+        (另: L4 同段还给 `html, body` 加了 overflow-x: hidden —— 那一条**已经迁入
+         本文件的 F4**, 所以全局兜底仍在, 并不是完全放弃这道闸。) */
   main#main-content {
     min-width: 0 !important;
   }
@@ -293,10 +295,50 @@ bit-nav-logo bit-nav-item .bwi-shield {
   }
   /* 对话框里的 tw-max-w-* 会按桌面尺寸算, 窄屏下顶掉。
      ⚠️ 这里刻意不写 bit-dialog / .cdk-overlay-pane 的 max-width —— K0 已经把它们
-        设成 100vw 了, 而 F4 原稿是 96vw(在 390px 屏上会变成 374px 并左贴边,
-        右侧空 16px, 不对称)。后写的规则会覆盖 K0, 搬过来反而是退步。 */
+        设成 100vw 了, 而 L4(其 F5 块)原稿给的是 96vw(在 390px 屏上会变成 374px 并
+        左贴边, 右侧空 16px, 不对称)。后写的规则会覆盖 K0, 搬过来反而是退步。 */
   bit-dialog [class*="tw-max-w"] {
     max-width: 100% !important;
+  }
+}
+
+/* ======================================================================
+ * J9. 窄屏筛选抽屉开关 —— 标记在 vault-filter.component.html 的 .warden-filter-toggle
+ *
+ *    L4(§7.1)是往 app-vault-filter 里注入一个 #warden-filterbar, 再切 body 上的 class
+ *    来显隐筛选区块, 按钮文案还从被 I 段藏掉的页头 h1 里抓。源码层改干净了:
+ *    组件自己持有展开态(filterSectionsExpanded), 文案取 i18n 的 `filters`。
+ *
+ *    为什么需要它: 窄屏下 11 个筛选区块竖排比一屏还高。F3 给了 58vh 上限 + 内滚,
+ *    那只是"能滚", 不是"不挡列表" —— 默认收起后条目列表才能出现在首屏。
+ *
+ *    宽屏行为零变化: 开关默认 display:none, 收起规则也只写在 @media 里。
+ *
+ *    ⚠️ 按钮的配色**刻意不在这里写** —— 模板用的是官方的 bitButton, 它会跟随应用当前
+ *       主题。这跟 G 段(标签栏)不同: 那段是照抄 L4 的硬编码色, 属于待改进项。
+ *
+ *    注: 这里编号用 "J9"(对应清单里的功能项)而不是续 F 段号 —— 因为 L4 的 F4/F5
+ *        子块与 fork 的 F1–F4 已经不是一个编号体系了, 续号会造成误读。
+ * ====================================================================== */
+.warden-filter-toggle {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .warden-filter-toggle {
+    display: block;
+    margin-bottom: 8px;
+  }
+  /* 展开时把箭头翻过来 */
+  .warden-filter-toggle .warden-filter-caret {
+    transition: transform 0.15s ease;
+  }
+  .warden-filter-toggle [aria-expanded="true"] .warden-filter-caret {
+    transform: rotate(180deg);
+  }
+  /* 收起态: 藏掉筛选区块。作用域限死在 app-vault-filter 内, 且只在窄屏。 */
+  app-vault-filter .warden-filter-collapsed > .filter {
+    display: none !important;
   }
 }
 

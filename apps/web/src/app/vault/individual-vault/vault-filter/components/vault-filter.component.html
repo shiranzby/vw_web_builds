@@ -21,7 +21,11 @@
         >
         </a>
       </div>
-      <div class="tw-p-5" data-testid="filters-body">
+      <div
+        class="tw-p-5"
+        data-testid="filters-body"
+        [class.warden-filter-collapsed]="!filterSectionsExpanded"
+      >
         <div class="tw-mb-4">
           <bit-search
             id="search"
@@ -32,6 +36,31 @@
             appAutofocus
           />
         </div>
+
+        <!--
+          自托管定制(J9): 窄屏筛选抽屉开关。
+          窄屏下 11 个筛选区块竖排比一屏还高, 默认展开会把下方条目列表整个挤出屏幕;
+          这里把它们收进一个开关(默认收起), 点开才展开。宽屏由 CSS 把这个开关藏掉、
+          且不套用收起规则, 官方行为完全不变。
+
+          按钮用官方的 bitButton(而不是自定义配色) —— 它会跟随应用当前主题, 不必像
+          G 段那样硬编码颜色。图标用 bwi-filter + bwi-angle-down(官方图标字体里都有)。
+        -->
+        <div class="warden-filter-toggle">
+          <button
+            type="button"
+            bitButton
+            buttonType="secondary"
+            block
+            [attr.aria-expanded]="filterSectionsExpanded"
+            (click)="toggleFilterSections()"
+          >
+            <i class="bwi bwi-fw bwi-filter" aria-hidden="true"></i>
+            {{ "filters" | i18n }}
+            <i class="bwi bwi-angle-down warden-filter-caret" aria-hidden="true"></i>
+          </button>
+        </div>
+
         @for (f of filtersList; track f) {
           <div class="filter">
             <app-filter-section
