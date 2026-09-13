@@ -6,8 +6,9 @@
   - Not dynamically generated during Worker runtime (saves Cloudflare Worker CPU/request quotas).
 
   Usage:
-  - After CI/CD or local download of bw_web_builds and extraction, keep `public/web-vault/` as the static resource root directory.
-  - Run: `mkdir -p public/web-vault/css/ && cp public/css/vaultwarden.css public/web-vault/css/`
+  - 本文件由 webpack 在构建期复制到产物的 css/ 目录（见 apps/web/webpack.base.js 中
+    copy-webpack-plugin 的 patterns）。index.html 里以 <link href="css/vaultwarden.css"> 引用。
+  - 不要再手工 cp 到 public/web-vault/css/ —— 那是把本文件放在部署仓库里时的旧流程。
 */
 
 /* Hide unsupported UI elements */
