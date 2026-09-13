@@ -2,3 +2,8 @@
   <ng-content select="app-side-nav, [slot=side-nav]" slot="side-nav"></ng-content>
   <ng-content></ng-content>
 </bit-layout>
+
+<!-- 窄屏底部标签栏(自托管定制)。放在 bit-layout 之外: 它是 position:fixed, 不参与
+     bit-layout 的三列 grid, 放外面可以彻底排除"多一个 grid item"的可能。
+     这个外壳只有登录后的 user-layout / organization-layout 在用, 所以登录页不会出现它。 -->
+<app-mobile-tab-bar></app-mobile-tab-bar>

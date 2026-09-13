@@ -212,7 +212,19 @@ bit-nav-logo bit-nav-item .bwi-shield {
        =384px), 而 360–430px 的手机屏比它还窄 —— 不松开这一条, 每个页面都会
        横向溢出。桌面端不写这条, 行为完全不变。
       (另一半在源码里: layout.component.ts 的网格列高按容器宽度封顶。只改这一半
-       的话, 网格轨道仍会把列撑到 384px, 溢出依旧。) */
+       的话, 网格轨道仍会把列撑到 384px, 溢出依旧。)
+
+      ⚠️ L4 的 F 段同一个块里还有三条声明, 都**刻意没有搬**:
+        padding / padding-top / padding-bottom —— L4 里它们是死代码。同一选择器
+        在更靠后的 H 段被整体覆盖(H1: `padding: 6px 10px 74px`), 级联按源码顺序
+        决胜, H 段赢。生效值已由本文件的 H1 一字不差地提供(实测 main 的
+        padding-bottom = 74px, 正好给底部标签栏留出空间: 内容下沿 738 < 底栏顶 749)。
+        overflow-x: hidden —— L4 里是活的(用于锁掉横滚), 这里冗余。它的唯一作用是
+        裁掉溢出内容, 而本轮已从根因消除溢出: min-width 放开 + 网格轨道封顶(J8),
+        实测 6 个路由(保险库/发送/生成器/报告/账户设置/偏好设置)在 375px 下
+        main.scrollWidth 均等于 clientWidth, 零横溢。且 <main> 官方就是
+        `tw-overflow-auto`, 保留 auto 比 hidden 更稳: 万一将来某页溢出, auto 至少
+        让内容可滚可达, hidden 会直接裁掉。故不加。 */
   main#main-content {
     min-width: 0 !important;
   }
@@ -436,4 +448,92 @@ ng-dropdown-panel,
    这里保留 46vh 只作为**桌面端 / JS 未接管时**的默认上限。 */
 .ng-dropdown-panel.ng-select-bottom .ng-dropdown-panel-items {
   max-height: 46vh;
+}
+
+/* ======================================================================
+ * G. 底部标签栏(标记在 mobile-tab-bar.component.html) —— 仅窄屏显示
+ *    迁移自 custom.css 的 G 段, 逐字沿用(含深色分支)。
+ *
+ *    z-index 60 刻意低于 .cdk-overlay-container(1000): 详情抽屉/对话框要能盖住它。
+ *
+ *    ⚠️ 颜色是硬编码的(和 L4 一致), 跟随的是 **系统** 深色偏好, 不是应用内的主题设置。
+ *       等应用切成 Nord/Solarized 之类的主题时, 这条栏不会跟着变。要修的话应该换成
+ *       应用自己的主题变量(--color-*), 但那属于**观感改进**、不是迁移的一部分 ——
+ *       迁移的验收标准是"与 L4 功能等价", 所以不在这里夹带。
+ * ====================================================================== */
+.warden-tabbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .warden-tabbar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    align-items: stretch;
+    height: 62px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: #ffffff;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.06);
+    box-sizing: content-box;
+  }
+  .warden-tabbar a {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 11px;
+    line-height: 1;
+    text-decoration: none;
+    color: #6b7280;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .warden-tabbar a:active {
+    background: rgba(0, 0, 0, 0.04);
+  }
+  .warden-tabbar svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .warden-tabbar a.warden-tab-active {
+    color: #175ddc;
+    font-weight: 600;
+  }
+  .warden-tabbar a.warden-tab-active svg {
+    stroke-width: 2.1;
+  }
+}
+
+@media (max-width: 768px) and (prefers-color-scheme: dark) {
+  .warden-tabbar {
+    background: #1f2329;
+    border-top-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.4);
+  }
+  .warden-tabbar a {
+    color: #9aa3af;
+  }
+  .warden-tabbar a:active {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .warden-tabbar a.warden-tab-active {
+    color: #7aa7ff;
+  }
 }
