@@ -174,6 +174,12 @@ module.exports.buildConfig = function buildConfig(params) {
         { from: path.resolve(__dirname, "src/images/icons"), to: "images" },
         { from: path.resolve(__dirname, "src/videos"), to: "videos" },
         { from: path.resolve(__dirname, "src/locales"), to: "locales" },
+        // 自托管部署用的可替换样式表。index.html 里通过
+        //   <link rel="stylesheet" href="css/vaultwarden.css" />
+        // 引用它（带 webpackIgnore 注释，见 index.html），但 copy-webpack-plugin
+        // 默认**不**复制 src/css 目录，所以必须在这里显式列出，否则产物里没有该文件、
+        // 那个 <link> 会 404。上游 vw_web_builds 只加了 <link>，文件一直靠部署者自己放。
+        { from: path.resolve(__dirname, "src/css/vaultwarden.css"), to: "css/vaultwarden.css" },
         {
           from: path.resolve(__dirname, "../../node_modules/qrious/dist/qrious.min.js"),
           to: "scripts",
