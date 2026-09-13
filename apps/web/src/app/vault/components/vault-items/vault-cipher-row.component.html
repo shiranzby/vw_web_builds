@@ -97,7 +97,16 @@
     </p>
   </td>
 }
-<td bitCell [ngClass]="RowHeightClass" class="tw-text-right">
+<td
+  bitCell
+  [ngClass]="RowHeightClass"
+  class="tw-text-right"
+  [class.warden-totp-host]="showTotpBadge"
+>
+  <!-- 自托管定制(J6): 行内 TOTP 动态码徽章, 摆在 ⋯ 之前。见 totp-badge.component.ts -->
+  @if (showTotpBadge) {
+    <vault-totp-badge [cipher]="cipher"></vault-totp-badge>
+  }
   @if (decryptionFailure) {
     <button
       [disabled]="disabled || !canManageCollection"

@@ -79,8 +79,8 @@ bit-nav-logo bit-nav-item .bwi-shield {
  * shypwd mobile adaptation
  *
  * Migrated from the former runtime patch layer (warden-worker `custom/custom.css`
- * sections A / F / H / I / J / J2 / J3 / J7 / J9 / J10 / J14 / K / M / G). These rules
- * are global-scope by nature: their targets (`main#main-content` shell, `bit-dialog` /
+ * sections A / B / F / H / I / J / J2 / J3 / J7 / J9 / J10 / J14 / K / M / G). These
+ * rules are global-scope by nature: their targets (`main#main-content` shell, `bit-dialog` /
  * `.cdk-overlay-pane`, `ng-dropdown-panel`) live outside any Angular component subtree,
  * so putting them in app SCSS would require ::ng-deep / ViewEncapsulation.None — worse.
  *
@@ -89,8 +89,8 @@ bit-nav-logo bit-nav-item .bwi-shield {
  * specificity with both sides using !important, these declarations win.
  *
  * Most of what is below is inside `@media (max-width: 768px)`; the exceptions are
- * M (ng-select hardening), G (tab bar), I's account-card hide rules (J3) and the
- * J10 account card itself — those are deliberately desktop-visible.
+ * M (ng-select hardening), G (tab bar), B (行内 TOTP 徽章), I's account-card hide
+ * rules (J3) and the J10 account card itself — those are deliberately desktop-visible.
  * ========================================================================== */
 
 /* ======================================================================
@@ -1049,5 +1049,210 @@ body.warden-avatar-on .warden-acct-avatar {
   .warden-acct-danger {
     color: #ff8a8a !important;
     border-color: rgba(255, 138, 138, 0.35) !important;
+  }
+}
+
+/* ======================================================================
+ * B 段. 列表行内的 TOTP 动态码徽章 —— 标记在 totp-badge.component.html
+ *
+ *   结构(照设计图):
+ *        ┌────────────┐    .warden-totp-chip  淡蓝色圆角矩形 —— 完整, **不裁剪**
+ *        │  524 453   │    .warden-totp-body  码, 铺满整个盒体 -> 落在矩形正中
+ *        └─────  ────┘    .warden-totp-clip  只把"下面那条线"的中间挖掉 20px,
+ *           └ 27 ┘           于是那条线被裁成左右两条(1px 边框 + 3px 进度条)
+ *                         .warden-totp-sec   秒数, 骑在"下面的边"上(水平+垂直居中)
+ *
+ *   为什么把"裁剪"单独做一层: 只有那条**线**要被挖断, 底色不能挖 ——
+ *   秒数的上半截落在淡蓝色盒体里、下半截落到页面上, 与设计图一致。
+ *
+ *   ⚠️ 进度条分左右两段(a / b), 而不是 L4 的一段 + JS 补 20px:
+ *      两段各自用 calc(剩余比例 * (100% - 20px)) 纯 CSS 算宽 —— 前一半走左段、
+ *      后一半走右段, 合起来正好是一个完整周期。跨过缺口时右端连续推进, 不需要
+ *      量 offsetWidth, 也不会在跨中点的瞬间"跳"20px。
+ *
+ *   ⚠️ 深色模式下刻意不加规则(L4 也没有): 淡蓝底 + 深蓝字在深色列表里读得清,
+ *      而且这正是 L4 线上呈现的样子 —— 迁移动的是实现方式, 不是配色。
+ * ====================================================================== */
+.warden-totp-code {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+  box-sizing: border-box;
+  min-width: 84px;
+  height: 46px;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 淡蓝底: 一个完整的圆角矩形 */
+.warden-totp-chip {
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background: #eef3ff;
+}
+.warden-totp-code:hover .warden-totp-chip {
+  background: #e3ecff;
+}
+/* 裁剪层: 底部中间挖掉 20px 宽 / 4px 深的一块(正好盖住 1px 边框 + 3px 进度条)。
+   ⚠️ 宽度要和 totp-badge.component.ts 里 TRACK_GAP 常量保持一致, 否则线断的位置
+      和时长换算对不上。
+   ⚠️ border-radius:inherit + overflow:hidden 是**必需**的: clip-path 只按多边形裁,
+      不认圆角; 少了它, 进度条左右两端会直愣愣戳到圆角外面去。 */
+.warden-totp-clip {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 100%,
+    calc(50% + 10px) 100%,
+    calc(50% + 10px) calc(100% - 4px),
+    calc(50% - 10px) calc(100% - 4px),
+    calc(50% - 10px) 100%,
+    0 100%
+  );
+}
+/* 1px 边框。用 inset box-shadow 而不是 border: 不占盒模型尺寸, 这样它和进度条
+   严格叠在同一条基线上, 一起被上面那把剪刀裁。 */
+.warden-totp-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px #b9cdf3;
+}
+.warden-totp-body {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.warden-totp-digits {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #175ddc;
+  line-height: 1;
+  white-space: nowrap;
+}
+/* 进度条: 沿下沿 3px。宽度由组件按"缺口不计入时长"换算后写进 [style.width] */
+.warden-totp-fill-a,
+.warden-totp-fill-b {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  width: 0;
+  background: #175ddc;
+  transition: width 0.9s linear;
+}
+.warden-totp-fill-a {
+  left: 0;
+}
+.warden-totp-fill-b {
+  left: calc(50% + 10px);
+}
+/* 秒数: 骑在"下面的边"上 —— 垂直中心正好落在下沿, 所以 bottom 是负值 */
+.warden-totp-sec {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -7px;
+  width: 20px;
+  height: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #175ddc;
+}
+.warden-totp-low .warden-totp-chip {
+  background: #fdecec;
+}
+.warden-totp-low .warden-totp-ring {
+  box-shadow: inset 0 0 0 1px #f0b4b4;
+}
+.warden-totp-low .warden-totp-digits {
+  color: #c62828;
+}
+.warden-totp-low .warden-totp-fill-a,
+.warden-totp-low .warden-totp-fill-b {
+  background: #e24b4a;
+}
+.warden-totp-low .warden-totp-sec {
+  color: #c62828;
+}
+.warden-totp-copied .warden-totp-chip {
+  background: #dff3e6 !important;
+}
+.warden-totp-copied .warden-totp-ring {
+  box-shadow: inset 0 0 0 1px #9fd8b6 !important;
+}
+.warden-totp-copied .warden-totp-digits {
+  color: #1b7a44 !important;
+}
+
+/* 徽章所在的那一格。
+   ⚠️ 在 totp-badge.component.ts 里由 [class.warden-totp-host] 条件挂上 ——
+      L4 也是"只给带徽章的行加这个类", 所以列宽/对齐不会波及普通行。 */
+/* ⚠️ 绝对不要给 td 加 display:flex —— td 一旦变成 flex 容器就不再是 table-cell,
+   会被塞进一个匿名单元格里, 高度只按内容算(实测 46px, 而行高 79px),
+   于是"相对整行居中"永远做不到。用原生 table-cell + vertical-align:middle + text-align:right 才对。 */
+td.warden-totp-host {
+  vertical-align: middle !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  /* 徽章要在这个盒子里做绝对定位, 才能既垂直居中、又**不碰 ⋯ 的基线**。 */
+  position: relative;
+}
+/* ⚠️⚠️ 徽章为什么用绝对定位, 而不是 L4 那套 `::before { height:100%; vertical-align:middle }` 撑杆:
+   撑杆确实能把徽章压到正的格心(实测 Δ=0), 但它同时把**行盒的基线**往下拽 ——
+   与基线对齐的 ⋯ 按钮被一起带走, 实测上移 8.91px。
+   把撑杆删掉也不够: 46px 的徽章本身留在行盒里, 一样会把基线挤走(实测 ⋯ 仍上移 6.58px)。
+   于是"带徽章的行"与"不带徽章的行"的 ⋯ 不在同一条竖线上(对照行本来就偏高
+   2.75px, 那是官方基线对齐的固有行为)。L4 的处理是跑一段 `alignHeaderDots()`
+   每 2.4s 量一次去追差, 而且只治了表头那一组点。
+   **只有让徽章脱离行盒**才能两全: ⋯ 的基线一分不动 —— 整列点永远是一条直线,
+   徽章自己按格子中心居中。
+   ⚠️ 选择器不能写成 `td.warden-totp-host > .warden-totp-code`: 徽章外面还套着
+      `<vault-totp-badge>` 宿主元素, 子选择器**根本命中不到**(踩过一次:
+      结果 position 仍是 relative, 徽章被行盒基线带偏 2.33px)。
+   ⚠️ left: 12px 对应 bitCell 的 tw-p-3(左右各 12)。横向账:
+      12 + 84(徽章) + 8(间距) + 32(⋯) + 12 = 148 = 列宽(见下一条规则)。 */
+td.warden-totp-host > vault-totp-badge > .warden-totp-code {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 0;
+}
+/* 最后一列(⋯)的官方宽度是 48px(tw-w-12), 装不下"84px 徽章 + 8px 间距 + 32px 的 ⋯ 按钮"。
+   `bit-table` 是 layout=fixed, 所以必须显式给列宽。
+   ⚠️ 148 = 84(徽章) + 8(间距) + 32(⋯) + 12×2(bitCell 的 tw-p-3 左右内边距)。
+      少给 24px 的后果不是"挤一点", 而是**溢出**: td 是 `text-align:right` +
+      `white-space:nowrap`, 内容比内容盒宽时整行会从内容盒左沿排起、向右溢出,
+      于是行内 ⋯ 会跑到表格右边界**外面** 12px, 比表头 ⋯ 右 24px。
+      L4 用 `alignHeaderDots()` 每 2.4s 量一次再把表头那组点平移过去;
+      源码层不给它这个机会 —— 列宽给够, 两侧天然同列。 */
+table thead th.tw-w-12 {
+  width: 148px !important;
+}
+
+@media (max-width: 768px) {
+  /* F4. 徽章窄屏收紧(与 L4 同值) */
+  .warden-totp-code {
+    min-width: 78px;
+  }
+  .warden-totp-digits {
+    font-size: 12.5px !important;
   }
 }

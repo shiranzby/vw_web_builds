@@ -233,6 +233,15 @@ export class VaultCipherRowComponent<C extends CipherViewLike> implements OnInit
     return CipherViewLikeUtils.hasAttachments(this.cipher);
   }
 
+  /* 自托管定制(J6): 行内 TOTP 徽章是否出现。
+     与 L4 同口径 —— 条目里存了验证码就常显, **不看 premium/组织开关**
+     (官方 `showTotpCopyButton` 要 `organizationUseTotp || showPremiumFeatures`,
+     那是"复制"按钮的门槛; 徽章只负责把码显示出来)。
+     回收站条目跳过: 那里既不该看码, L4 也是这么过滤的。 */
+  protected get showTotpBadge() {
+    return !!CipherViewLikeUtils.getLogin(this.cipher)?.totp && !this.isDeleted;
+  }
+
   // Do not show attachments button if:
   // item is archived AND user is not premium user
   protected get showAttachments() {

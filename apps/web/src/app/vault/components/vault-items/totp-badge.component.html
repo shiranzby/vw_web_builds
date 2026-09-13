@@ -1,0 +1,34 @@
+<!--
+  结构(照设计图):
+    ┌────────────┐   .warden-totp-chip  淡蓝色圆角矩形 —— 完整, 不裁剪
+    │  524 453   │   .warden-totp-body  码, 铺满整个盒体 -> 落在矩形正中
+    └─────  ────┘   .warden-totp-clip  只把"下面那条线"的中间挖掉 20px,
+       └ 27 ┘          于是那条线被裁成左右两条(1px 边框 + 3px 进度条)
+                    .warden-totp-sec   秒数, 骑在"下面的边"上
+
+  样式全部在 css/vaultwarden.css 的「B 段」, 这里只负责结构。
+-->
+@if (state(); as s) {
+  <span
+    class="warden-totp-code"
+    [class.warden-totp-low]="s.low"
+    [class.warden-totp-copied]="copied()"
+    role="button"
+    tabindex="0"
+    [title]="'copyVerificationCode' | i18n"
+    (click)="copy($event)"
+    (keydown.enter)="copy($event)"
+    (keydown.space)="copy($event)"
+  >
+    <span class="warden-totp-chip"></span>
+    <span class="warden-totp-clip">
+      <span class="warden-totp-ring"></span>
+      <span class="warden-totp-fill-a" [style.width]="s.leftWidth"></span>
+      <span class="warden-totp-fill-b" [style.width]="s.rightWidth"></span>
+    </span>
+    <span class="warden-totp-body">
+      <span class="warden-totp-digits">{{ copied() ? "已复制" : s.digits }}</span>
+    </span>
+    <span class="warden-totp-sec">{{ s.sec }}</span>
+  </span>
+}

@@ -23,6 +23,7 @@ import { SharedModule } from "../../../shared/shared.module";
 import { OrganizationBadgeModule } from "../../individual-vault/organization-badge/organization-badge.module";
 import { PipesModule } from "../../individual-vault/pipes/pipes.module";
 
+import { VaultTotpBadgeComponent } from "./totp-badge.component";
 import { VaultCipherRowComponent } from "./vault-cipher-row.component";
 import { VaultCollectionRowComponent } from "./vault-collection-row.component";
 import { VaultItemsComponent } from "./vault-items.component";
@@ -47,7 +48,12 @@ import { VaultItemsComponent } from "./vault-items.component";
     Vfo1I18nPipe,
     Vfo1IconPipe,
   ],
-  declarations: [VaultItemsComponent, VaultCipherRowComponent, VaultCollectionRowComponent],
+  declarations: [
+    VaultItemsComponent,
+    VaultCipherRowComponent,
+    VaultCollectionRowComponent,
+    VaultTotpBadgeComponent,
+  ],
   exports: [VaultItemsComponent],
 })
 export class VaultItemsModule {}
