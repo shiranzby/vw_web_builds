@@ -588,17 +588,31 @@ bit-nav-logo bit-nav-item .bwi-shield {
     padding: 9px 10px 5px !important;
     margin-bottom: 6px !important;
   }
-  /* K3. 字段: 默认每个 68px(label 20 + 输入 38 + 间距), 压到 50px 上下 */
+  /* K3. 字段: 默认每个 68px(label 20 + 输入 38 + 间距), 压到 50px 上下
+     ⚠️ 第十八批/V 段: 输入框高度 **32px → 38px**(= `--warden-line-h`)。
+        32px 是 K3 当初额外压的一档, 但它只压了 `<input>`, 没压住包着它的那层行容器
+        (`bit-form-field` 内部固定 38px) ⇒ 输入框顶对齐在 38px 的行里, **内容整体偏上 3px**
+        (实测 name 输入 cy=256 / 行 cy=259)。用户报的"输入框没有高度居中"就是这个。
+        统一到 38px 之后: 输入框正好铺满行, 也与 `bit-select`(原生 38px)同高。 */
   bit-dialog bit-form-field,
   .cdk-overlay-pane bit-form-field {
     margin-bottom: 2px !important;
   }
   bit-dialog bit-form-field input,
   .cdk-overlay-pane bit-form-field input {
-    height: 32px !important;
-    min-height: 32px !important;
+    height: var(--warden-line-h) !important;
+    min-height: var(--warden-line-h) !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
+  }
+  /* 下拉框: 官方本来就是 38px(= 同一口径), 这里显式写出来只为"一行输入框的唯一高度"
+     有个落点, 免得以后谁再单独把某一类控件改高。 */
+  bit-dialog bit-form-field bit-select,
+  bit-dialog bit-form-field bit-select > button,
+  .cdk-overlay-pane bit-form-field bit-select,
+  .cdk-overlay-pane bit-form-field bit-select > button {
+    height: var(--warden-line-h) !important;
+    min-height: var(--warden-line-h) !important;
   }
   bit-dialog bit-form-field label,
   .cdk-overlay-pane bit-form-field label {
@@ -720,10 +734,8 @@ ng-dropdown-panel,
  *
  *    z-index 60 刻意低于 .cdk-overlay-container(1000): 详情抽屉/对话框要能盖住它。
  *
- *    ⚠️ 颜色是硬编码的(和 L4 一致), 跟随的是 **系统** 深色偏好, 不是应用内的主题设置。
- *       等应用切成 Nord/Solarized 之类的主题时, 这条栏不会跟着变。要修的话应该换成
- *       应用自己的主题变量(--color-*), 但那属于**观感改进**、不是迁移的一部分 ——
- *       迁移的验收标准是"与 L4 功能等价", 所以不在这里夹带。
+ *    ⚠️ 颜色是硬编码的(和 L4 一致)。第十八批/V 段起**跟随应用内主题**(`html.theme_dark`),
+ *       不再是系统深色偏好 —— 见下面 G 段深色分支处的说明。
  * ====================================================================== */
 .warden-tabbar {
   display: none;
@@ -785,19 +797,28 @@ ng-dropdown-panel,
   }
 }
 
-@media (max-width: 768px) and (prefers-color-scheme: dark) {
-  .warden-tabbar {
+/* ----------------------------------------------------------------------
+ * G 段深色分支 —— 第十八批/V 段由 `prefers-color-scheme` 改成**应用内主题**。
+ *
+ *   原来挂的是 `@media (prefers-color-scheme: dark)`(系统偏好), 而应用自己的主题开关
+ *   (设置-外观-深色)是把 `theme_dark` 类挂到 `<html>` 上 —— 两者可以不一致:
+ *   用户在**浅色系统**里把应用切成深色时, 这条栏不会跟着变, 于是深色页面配一条白底
+ *   标签栏。用户反馈的第一条就是它。改成 `html.theme_dark` 之后两个方向都正确,
+ *   顺带把"深色系统 + 浅色应用"也会变深的那个反向 bug 一起修掉。
+ * ---------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  html.theme_dark .warden-tabbar {
     background: #1f2329;
     border-top-color: rgba(255, 255, 255, 0.1);
     box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.4);
   }
-  .warden-tabbar a {
+  html.theme_dark .warden-tabbar a {
     color: #9aa3af;
   }
-  .warden-tabbar a:active {
+  html.theme_dark .warden-tabbar a:active {
     background: rgba(255, 255, 255, 0.06);
   }
-  .warden-tabbar a.warden-tab-active {
+  html.theme_dark .warden-tabbar a.warden-tab-active {
     color: #7aa7ff;
   }
 }
@@ -924,15 +945,16 @@ app-mobile-sub-nav {
   }
 }
 
-@media (max-width: 768px) and (prefers-color-scheme: dark) {
-  .warden-subnav a {
+/* J. 二级导航 chips 的深色分支 —— 同上, V 段改成跟应用内主题(`html.theme_dark`)。 */
+@media (max-width: 768px) {
+  html.theme_dark .warden-subnav a {
     border-color: rgba(255, 255, 255, 0.22);
     color: #c3c9d4;
   }
-  .warden-subnav a:active {
+  html.theme_dark .warden-subnav a:active {
     background: rgba(255, 255, 255, 0.06);
   }
-  .warden-subnav a.warden-subnav-on {
+  html.theme_dark .warden-subnav a.warden-subnav-on {
     background: #7aa7ff;
     border-color: #7aa7ff;
     color: #11161d;
@@ -1099,28 +1121,28 @@ body.warden-avatar-on .warden-acct-avatar {
   opacity: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  .warden-acctcard {
-    background: #262b33;
-    border-color: rgba(255, 255, 255, 0.12);
-  }
-  .warden-acct-name {
-    color: #f3f4f6;
-  }
-  .warden-acct-mail {
-    color: #9ca3af;
-  }
-  .warden-acct-acts button {
-    color: #7aa7ff;
-    border-color: rgba(255, 255, 255, 0.18);
-  }
-  .warden-acct-acts button:active {
-    background: rgba(255, 255, 255, 0.06);
-  }
-  .warden-acct-danger {
-    color: #ff8a8a !important;
-    border-color: rgba(255, 138, 138, 0.35) !important;
-  }
+/* J10 账户卡片的深色分支 —— V 段改成跟应用内主题(`html.theme_dark`)。
+   用户反馈: "设置页我的账户页, 上面的头像/昵称/锁定注销这一块的背景颜色没有适配"。 */
+html.theme_dark .warden-acctcard {
+  background: #262b33;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+html.theme_dark .warden-acct-name {
+  color: #f3f4f6;
+}
+html.theme_dark .warden-acct-mail {
+  color: #9ca3af;
+}
+html.theme_dark .warden-acct-acts button {
+  color: #7aa7ff;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+html.theme_dark .warden-acct-acts button:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+html.theme_dark .warden-acct-danger {
+  color: #ff8a8a !important;
+  border-color: rgba(255, 138, 138, 0.35) !important;
 }
 
 /* ======================================================================
@@ -1275,12 +1297,12 @@ body.warden-avatar-on .warden-acct-avatar {
 @keyframes warden-totp-promote {
   from {
     transform: translateY(calc(-50% + 9px));
-    color: #6b7280;
+    color: var(--warden-totp-muted, #6b7280);
     opacity: 0.92;
   }
   to {
     transform: translateY(-50%);
-    color: #175ddc;
+    color: var(--warden-totp-strong, #175ddc);
     opacity: 1;
   }
 }
@@ -1432,8 +1454,9 @@ table thead th.tw-w-12 {
  *          统一处理(74 > G 段底栏的 62)。
  *      内层(Title / Search / Card / Row / Meta / Name / User / Empty)逐条照搬, 含深色分支。
  *
- *   ⚠️ 深色分支跟的是**系统**深色偏好(`prefers-color-scheme`), 不是应用内主题 ——
- *      与 G 段同样刻意沿用 L4 的写法, 换成 `--color-*` 变量属于观感改进, 不夹带进迁移。
+ *   ⚠️ 深色分支在第十八批/V 段已从 `prefers-color-scheme`(系统偏好)改成
+ *      `html.theme_dark`(应用内主题开关), 与 G / J10 两处一起改 —— 用户反馈
+ *      "外观页切成深色后这些地方都没适配"。迁移期的"沿用 L4 写法"到此结束。
  *
  *   注: `.warden-auth-list` 只是个容器钩子, L4 里也没有给它任何规则, 这里保持一致。
  *   `.warden-auth-count`(L4 里那句空跑的 `document.querySelector`)已确认是死代码, 不迁。
@@ -1510,28 +1533,31 @@ vault-totp-badge.warden-auth-badge .warden-totp-code {
   padding: 48px 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  .warden-auth-title {
-    color: #f3f4f6;
-  }
-  .warden-auth-search {
-    background: #262b33;
-    border-color: rgba(255, 255, 255, 0.16);
-    color: #f3f4f6;
-  }
-  .warden-auth-card {
-    background: #262b33;
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  .warden-auth-row {
-    border-bottom-color: rgba(255, 255, 255, 0.07);
-  }
-  .warden-auth-name {
-    color: #f3f4f6;
-  }
-  .warden-auth-user {
-    color: #9ca3af;
-  }
+/* E 段(验证码页)深色分支 —— V 段改成跟应用内主题(`html.theme_dark`)。
+   用户反馈: "验证码页的搜索条目输入框、整个页面的验证码每行都没有适配"。 */
+html.theme_dark .warden-auth-title {
+  color: #f3f4f6;
+}
+html.theme_dark .warden-auth-search {
+  background: #262b33;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f3f4f6;
+}
+html.theme_dark .warden-auth-card {
+  background: #262b33;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+html.theme_dark .warden-auth-row {
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+html.theme_dark .warden-auth-name {
+  color: #f3f4f6;
+}
+html.theme_dark .warden-auth-user {
+  color: #9ca3af;
+}
+html.theme_dark .warden-auth-empty {
+  color: #9ca3af;
 }
 
 /* ======================================================================
@@ -2171,8 +2197,14 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
    *
    *   ⚠️ 标签栏藏掉后 `select.component.ts` 的 `tabbarInset()` 自动读到 0,
    *      下拉面板的可用高度随之变大 —— 这是想要的行为, 不是副作用。
+   *
+   *   🔴 第十八批/V 段修正(用户反馈): "发送页的保存/取消不应该干掉底部导航栏, 而应该
+   *      加入到页面里"。所以 **发送对话框**(`tools-send-form`)被排除在这条之外:
+   *      它的页脚改成跟着内容走(V2 那一段), 底栏保留 —— 用户随时能切走。
+   *      其余对话框(条目编辑等)页脚仍是贴屏幕底的一整条, 少了这条就会被底栏压住,
+   *      所以 `:not(:has(tools-send-form))` 必须留着。
    * ------------------------------------------------------------------ */
-  body:has(bit-dialog) #warden-tabbar {
+  body:has(bit-dialog):not(:has(tools-send-form)) #warden-tabbar {
     display: none !important;
   }
 
@@ -2180,7 +2212,11 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
    * U4. 发送页的「要分享的文本」与「私密备注」压成**一行输入框**高。
    *
    *   两条都是 `rows="3"` 的 textarea。K4 已经把所有对话框 textarea 收到 54px,
-   *   用户要求再收到"像自定义域名那样的一行"(= 32px, 与 K3 的 input 同高)。
+   *   用户要求再收到"像自定义域名那样的一行"。
+   *
+   *   ⚠️ 第十八批/V 段: 32px → 38px(= `--warden-line-h`)。用户第二次反馈里明确要求
+   *      "要分享的文本 / 私密备注的高度应该和 Send 名称的输入框保持一致, 并且确定
+   *      一行输入框高度的具体值统一应用" —— 现在这三者与 `bit-select` 全是 38px。
    *
    *   ⚠️ 选择器**必须**用 `formcontrolname` 钉死这两个字段:
    *      用 `bit-dialog textarea` 会把条目编辑里的备注、以及"指定的人员"那个
@@ -2190,11 +2226,11 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
    * ------------------------------------------------------------------ */
   bit-dialog textarea[formcontrolname="text"],
   bit-dialog textarea[formcontrolname="notes"] {
-    height: 32px !important;
-    min-height: 32px !important;
+    height: var(--warden-line-h) !important;
+    min-height: var(--warden-line-h) !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
-    line-height: 32px !important;
+    line-height: var(--warden-line-h) !important;
     resize: none !important;
   }
 
@@ -2208,4 +2244,311 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
   main#main-content tools-send-list > [slot="filters"] {
     margin-top: 0 !important;
   }
+}
+
+/* ======================================================================
+ * V 段. 移动端第六轮反馈(第十八批) —— 与第十~十七批同理: **不是 L4 迁入的**。
+ *
+ *   V1 一行输入框的"唯一高度" = 38px, 且内容垂直居中   (bit-form-field / K3 / U4)
+ *   V2 发送页对话框: 藏页头 + 附加选项可折叠 + 保存/取消落进页面, 底栏保留
+ *   V3 发送列表: 「选项」列两种状态都与 ⋯ 对齐 + 切换行右侧新增 Send(四等均分)
+ *   V4 发送列表: 搜索栏与切换行之间留小空隙; 切到「文件 Send」搜索栏不再消失
+ *   V5 深色主题适配(底栏 G / 账户卡 J10 / 验证码页 E / TOTP 徽章 B)
+ *
+ * ⚠️ 除 V5 外全部只写在 @media (max-width: 768px) 里 ⇒ 桌面端零变化。
+ *    V5 里的徽章/验证码页在桌面端也显示, 所以那一段是全局的(但只在 theme_dark 下生效)。
+ * ====================================================================== */
+
+/* ----------------------------------------------------------------------
+ * 「一行输入框」的唯一高度口径。
+ *
+ *   K3 / U4 都引它, 别再往某一条规则里写死数字 —— 这个混乱的起点就是
+ *   "input 32px 但包着它的行是 38px", 于是内容整体偏上 3px。
+ *   38px 不是新拍的: 它就是 `bit-select` 的原生高度, 也是 `bit-form-field`
+ *   内部行容器的高度(K3 自己的注释里写的"label 20 + 输入 38 + 间距")。
+ * ---------------------------------------------------------------------- */
+:root {
+  --warden-line-h: 38px;
+}
+
+/* ----------------------------------------------------------------------
+ * V1. 输入框内容垂直居中 —— 判据是"控件中心 == 所在行中心"。
+ *
+ *   实测(390×844, `probe-v18-*`): name 输入框 [240..272] cy=256, 而它所在的
+ *   `bit-form-field` 行 [240..278] cy=259 ⇒ **偏上 3px**; 「最大访问次数」的
+ *   placeholder「不限制」同理(⊖⊕ 按钮居中在 38px 行里, 输入框却贴顶)。
+ *   根因就是 K3 把 `<input>` 压到 32px 却没动那层 38px 的行容器。
+ *
+ *   改法见上面 K3 / U4 —— 两处都已改成 `var(--warden-line-h)`, 输入框从此**铺满**那层
+ *   38px 的行, 不再有"贴顶"的余地。这里只补一条带 `bitSuffix` 的字段: 让后缀容器
+ *   (「− / +」那种) 与输入框同高对齐 —— 它比输入框高出一截的话会反过来把行撑高。
+ *   ⚠️ 刻意**不**写 `bit-form-field > div { align-items:center }` 这类兜底: 那个选择器
+ *      会碰到每个对话框里的每一层字段容器, 属于"顺手改一片", 实测也没有哪一层需要它。
+ * ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  bit-dialog bit-form-field [bitsuffix],
+  .cdk-overlay-pane bit-form-field [bitsuffix] {
+    height: var(--warden-line-h) !important;
+    align-items: center !important;
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * V2. 发送页「新增文本 / 文件 Send」对话框(第十八批, 用户四条要求)
+ *
+ *   ① 顶部那条"新增文本 Send + ✕"置顶常显 ⇒ **整条藏掉**(✕ 的功能由页脚取消键代替),
+ *      省下实测 45px;  ② 「附加选项」默认收起(见 send-options 模板里的 bit-disclosure);
+ *   ③ 页脚的保存/取消**落进页面**, 放在「附加选项」下面, 两个键均分同一行;
+ *   ④ 不再藏掉底部导航栏(U3 对发送对话框失效)。
+ *
+ *   做法:`bit-dialog` 的结构是 section > [header, 滚动区, 分隔线, footer],
+ *   而滚动区带 `tw-flex-1` ⇒ footer 被顶到屏幕底。要让它"跟着内容走"，就得让
+ *   **整个 section 变成唯一的滚动容器**: 关掉 flex 列、把里层的 `overflow` 放平,
+ *   section 自己 `overflow-y:auto`。
+ *
+ *   ⚠️ 必须用 `:has(tools-send-form)` 收窄 —— 这套改动对所有对话都是破坏性的
+ *      (条目编辑等对话框需要"页脚常驻贴底 + 内容自己滚")。
+ *   ⚠️ section 要**补一段等于底栏高度的下内边距**, 否则滚到底时页脚正好被底栏压住 ——
+ *      U3 当初藏底栏就是为了绕开它, 现在底栏留着, 就得从留白上让。
+ *   ⚠️ 选择器派生的权重必须压过组件自带的 Tailwind 类: `tw-overflow-hidden` 是
+ *      一个类(0,1,0), 而我这里是 (0,0,3) —— **类赢类型**, 所以每一条都必须带
+ *      `!important`(与 MEMORY 里"两条 !important 相撞比权重"是同一件事)。
+ * ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  /* V2① 藏页头 */
+  bit-dialog:has(tools-send-form) > section > header {
+    display: none !important;
+  }
+
+  /* V2③④ 整页单文档滚动 + 底部让出底栏 */
+  bit-dialog:has(tools-send-form) > section {
+    display: block !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    padding-bottom: calc(
+      var(--warden-tabbar-h) + var(--warden-tabbar-border) + var(--warden-safe-bottom)
+    ) !important;
+  }
+  bit-dialog:has(tools-send-form) > section > div.tw-relative {
+    overflow: visible !important;
+  }
+  bit-dialog:has(tools-send-form) > section > div.tw-relative > div[cdkscrollable] {
+    overflow-y: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* V2③ 页脚两个键均分同一行。
+     ⚠️ 用 `:has(> button + button)` 而不是无条件 `> button`: 查看态只有一颗「编辑」
+        (右边是垃圾桶图标), 把它拉满一整行会很怪; 只有"保存+取消"这种成对出现时才均分。 */
+  bit-dialog:has(tools-send-form) > section > footer:has(> button + button) > button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+  /* 页脚现在是页面的一部分, 不再是贴屏幕底的独立条 —— 上下留白收到与卡片一致 */
+  bit-dialog:has(tools-send-form) > section > footer {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  /* V2②「附加选项」的折叠开关。
+     宽屏口径在下面(默认展开), 这里只管窄屏的"点得动"与折角箭头。 */
+  .warden-send-options-toggle {
+    /* 让按钮长得和原来的 h2 标题一模一样(否则 h2 里多出来的按钮会有自己的字色/背景) */
+    appearance: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .warden-send-options-caret {
+    transition: transform 0.2s ease;
+  }
+  .warden-send-options:has(bit-disclosure:not(.tw-hidden)) .warden-send-options-caret {
+    transform: rotate(180deg);
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * V2② 宽屏口径: 「附加选项」**永远展开**, 箭头藏掉。
+ *
+ *   折叠是手机上的诉求(省纵向空间), 桌面端保持官方观感。
+ *   `bit-disclosure` 收起时给自己挂 `tw-hidden`, 这里用一个更强的类选择器把它压回来;
+ *   外层 `.warden-send-options` 是模板里专门加的钩子类 —— `bit-disclosure` 的宿主
+ *   类会被它自己的 `[class]` 绑定**整个覆盖掉**, 所以不能把钩子类挂在它身上(MEMORY ⑦)。
+ * ------------------------------------------------------------------ */
+@media (min-width: 769px) {
+  .warden-send-options bit-disclosure {
+    display: block !important;
+  }
+  .warden-send-options-caret {
+    display: none !important;
+  }
+  /* 宽屏下若这一行只剩"被隐藏的新增按钮"(单一 Send 类型时没有切换条), 整行收掉,
+     免得凭空多出 `tw-mt-4` 那 16px —— 桌面端要零变化。 */
+  main#main-content .warden-send-filters-new {
+    display: none !important;
+  }
+  main#main-content .warden-send-filters:not(:has(bit-toggle-group)) {
+    display: none !important;
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * V3a. 发送列表最后一列(「选项」/ ⋯)在两种状态下都必须与 ⋯ 对齐。
+ *
+ *   实测(390×844):
+ *     · 列表**有内容**: 列宽 56px, 表头文字 [336..362], ⋯ 按钮 [336..368] —— 差 6px;
+ *     · 列表**无内容**: 没有任何行, `td` 的 `tw-w-0` 不存在 ⇒ 列被撑到 **150.4px**,
+ *       表头文字跑到 [241.6..267.6], 离右沿 **112px** —— 这就是用户说的"向左偏移"。
+ *
+ *   列宽 56 = ⋯ 按钮 32 + `tw-p-3` 左右各 12。把宽钉死 + 表头右对齐之后, 两种状态下
+ *   「选项」二字的右沿都等于 ⋯ 的右沿(列右沿 - 12px), 与行数无关。
+ * ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  main#main-content tools-send-table table thead th:last-child,
+  main#main-content tools-send-table table tbody td:last-child {
+    width: 56px !important;
+  }
+  main#main-content tools-send-table table thead th:last-child {
+    text-align: right !important;
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * V3b. 切换行右侧的「新增 Send」, 与左侧三个切换**四等均分**。
+ *
+ *   🔴 这里有个坑必须一起处理: `bit-toggle-group` 自带 ResizeObserver ——
+ *      容器宽度一旦小于它的 `max-content` 宽度(实测 390 下 = **288px**),
+ *      它会**把三个 toggle 整个换成一个下拉框**(displayMode 降级)。
+ *      四等分之后切换组只剩 273px, 288 > 273 ⇒ 直接踩雷。
+ *      所以同时把 toggle 的左右内边距从 12px 收到 4px: max-content 随之降到
+ *      3×(66.1+8)+16 ≈ 238, 273 > 238 才安全。
+ *      ⚠️ 内边距只影响"降级阈值", 不影响可见宽度(标签是居中且不换行的)。
+ *
+ *   「四等均分」的口径: 用户要的是**四个控件等宽**, 也就是"新增按钮的宽度 == 一个 toggle
+ *   的宽度"。但 `bit-toggle-group` 自己带着 18px 的壳(2×1px 边框 + 2×4px 内边距 + 2×4px 列间距),
+ *   纯 3:1 均分的话切换组会偏窄、新增键反而比 toggle 宽 6px。
+ *   正解是把这个壳当成切换组的 `flex-basis`: 3:1 分配的就只剩"内容", 两边正好相等。
+ *   校验式(390 宽): 组 = 18 + 3/4×(366-18) = 279, 每格 = (279-18)/3 = 87, 新增 = 87 ✅
+ * ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  main#main-content tools-send-list > .warden-send-filters {
+    display: flex !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+  }
+  main#main-content tools-send-list > .warden-send-filters > bit-toggle-group {
+    flex: 3 1 18px !important;
+    min-width: 0 !important;
+  }
+  main#main-content tools-send-list > .warden-send-filters > bit-toggle-group bit-toggle label {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+  main#main-content tools-send-list > .warden-send-filters > .warden-send-filters-new {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    display: flex !important;
+  }
+  /* 高度与切换条统一(32px), 文字小一档 —— 四等分后每格只有 ~91px */
+  main#main-content tools-send-list > .warden-send-filters > .warden-send-filters-new > button {
+    flex: 1 1 0 !important;
+    width: 100% !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    font-size: 12.5px !important;
+    white-space: nowrap;
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * V4. 搜索栏与切换行之间留一点空隙。
+ *
+ *   实测 gap = 0(搜索栏 [6..46] 紧贴切换条 [46..88]), 用户希望"留很小的空白空隙"。
+ *   空隙挂在**搜索组件**上而不是切换行上: 搜索栏在没有 Send 时根本不渲染
+ *   (`showSearchBar`), 挂在它身上时空隙会自动一起消失, 不会平白多出几像素 ——
+ *   这正是 U5 当初把 `[slot="filters"]` 的 16px 压成 0 的原因。
+ * ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  main#main-content tools-send-list > tools-send-search {
+    display: block !important;
+    margin-bottom: 6px !important;
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * V5. 适配**应用内**深色主题(`html.theme_dark`)。
+ *
+ *   背景: G 段(底栏) / J10(账户卡片) / E 段(验证码页) 的深色分支原本挂的是
+ *   `@media (prefers-color-scheme: dark)`(系统偏好), 而应用的主题开关是把
+ *   `theme_dark` 挂到 `<html>` 上 —— 系统浅色 + 应用深色时它们全都"没适配"。
+ *   那三处已就地改成 `html.theme_dark`(见各自段落); 这里只补 **B 段 TOTP 徽章** ——
+ *   它原本**根本没有深色分支**(L4 那版刻意没写), 于是深色列表里出现一块淡蓝底 + 深蓝字。
+ *
+ *   徽章的颜色全部走应用主题变量, 深浅两套自动跟着走; 只有"低秒数/已复制"这两个
+ *   状态色是硬编码的(它们本来也不是主题色)。浅色分支**完全没动**。
+ * ------------------------------------------------------------------ */
+html.theme_dark .warden-totp-code {
+  /* 升格动画的两个颜色(见 `@keyframes warden-totp-promote` 里的 var() 兜底) */
+  --warden-totp-muted: rgb(var(--color-text-muted));
+  --warden-totp-strong: rgb(var(--color-primary-600));
+}
+html.theme_dark .warden-totp-chip {
+  background: rgb(var(--color-primary-100));
+}
+html.theme_dark .warden-totp-code:hover .warden-totp-chip {
+  background: #24356e;
+}
+html.theme_dark .warden-totp-ring {
+  box-shadow: inset 0 0 0 1px rgb(var(--color-primary-300));
+}
+html.theme_dark .warden-totp-row,
+html.theme_dark .warden-totp-digits {
+  color: rgb(var(--color-primary-600));
+}
+html.theme_dark .warden-totp-next,
+html.theme_dark .warden-totp-ghost {
+  color: rgb(var(--color-text-muted));
+}
+html.theme_dark .warden-totp-fill-a,
+html.theme_dark .warden-totp-fill-b {
+  background: rgb(var(--color-primary-600));
+}
+html.theme_dark .warden-totp-sec {
+  color: rgb(var(--color-primary-600));
+}
+html.theme_dark .warden-totp-low .warden-totp-chip {
+  background: rgb(var(--color-danger-100));
+}
+html.theme_dark .warden-totp-low .warden-totp-ring {
+  box-shadow: inset 0 0 0 1px #a8444f;
+}
+html.theme_dark .warden-totp-low .warden-totp-digits {
+  color: rgb(var(--color-danger-600));
+}
+html.theme_dark .warden-totp-low .warden-totp-fill-a,
+html.theme_dark .warden-totp-low .warden-totp-fill-b {
+  background: rgb(var(--color-danger-600));
+}
+html.theme_dark .warden-totp-low .warden-totp-sec {
+  color: rgb(var(--color-danger-600));
+}
+html.theme_dark .warden-totp-copied .warden-totp-chip {
+  background: rgb(var(--color-success-100)) !important;
+}
+html.theme_dark .warden-totp-copied .warden-totp-ring {
+  box-shadow: inset 0 0 0 1px #33713f !important;
+}
+html.theme_dark .warden-totp-copied .warden-totp-digits {
+  color: rgb(var(--color-success-600)) !important;
 }

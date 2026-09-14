@@ -22,14 +22,15 @@
     [disableSend]="disableSend()"
     [listState]="listState()"
     [searchText]="currentSearchText()"
+    [hasAnySends]="hasAnySends()"
     (editSend)="editSend($event)"
     (copySend)="onCopySend($event)"
     (deleteSend)="deleteSend($event)"
     (removePassword)="onRemovePassword($event)"
   >
     <!-- Hide the filters if a single type of Send is allowed -->
-    @if (allowedSendTypes().length !== 1) {
-      <div class="tw-mt-4" slot="filters">
+    <div class="tw-mt-4 warden-send-filters" slot="filters">
+      @if (allowedSendTypes().length !== 1) {
         <bit-toggle-group
           [selected]="selectedToggleValue"
           (selectedChange)="onToggleChange($event)"
@@ -39,8 +40,18 @@
           <bit-toggle [value]="'text'">{{ "sendTypeText" | i18n }}</bit-toggle>
           <bit-toggle [value]="'file'">{{ "sendTypeFile" | i18n }}</bit-toggle>
         </bit-toggle-group>
-      </div>
-    }
+      }
+      <!--
+        第十八批/V 段: 切换行最右侧的「新增 Send」入口(窄屏专用, 宽屏由页头那颗负责)。
+        起因: 页头在窄屏被 `warden-bare-header` 藏掉, 而列表里那个居中的「新增」只在
+        **空列表**时出现 —— 一旦有内容就没有任何新增入口了。放在这里既有入口、
+        又能在「所有/文本/文件」之间来回切时始终可见。
+      -->
+      @if (!disableSend()) {
+        <tools-new-send-dropdown class="warden-send-filters-new" [hideIcon]="true">
+        </tools-new-send-dropdown>
+      }
+    </div>
     @if (!disableSend()) {
       <tools-new-send-dropdown [hideIcon]="true" slot="empty-button"></tools-new-send-dropdown>
     }

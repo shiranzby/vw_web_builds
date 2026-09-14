@@ -1,69 +1,95 @@
 <bit-section [formGroup]="sendOptionsForm" disableMargin>
   @if (anyOptionFieldVisible()) {
     <bit-section-header>
-      <h2 class="tw-mt-4" bitTypography="h6">{{ "additionalOptions" | i18n }}</h2>
+      <!--
+        第十八批/V 段: 「附加选项」默认收起, 点标题展开(窄屏要省纵向空间)。
+        桌面端由 vaultwarden.css 强制展开 —— 折叠是手机上的诉求, 别改宽屏观感。
+        标记类 `warden-send-options` 同时给标题按钮和折叠体做钩子(CSS 里只认它)。
+      -->
+      <h2 class="tw-mt-4" bitTypography="h6">
+        <button
+          type="button"
+          class="warden-send-options-toggle"
+          [bitDisclosureTriggerFor]="optionsDisclosure"
+        >
+          {{ "additionalOptions" | i18n }}
+          <bit-icon name="bwi-angle-down" class="warden-send-options-caret" />
+        </button>
+      </h2>
     </bit-section-header>
-    <bit-card>
-      @if (maxAccessCountVisible()) {
-        <bit-form-field [disableMargin]="!hideEmailVisible() && !privateNoteVisible()">
-          <bit-label>{{ "maxAccessCount" | i18n }}</bit-label>
-          <input
-            bitInput
-            type="number"
-            step="1"
-            min="1"
-            formControlName="maxAccessCount"
-            [readonly]="!editing()"
-            [placeholder]="maxAccessCountPlaceholder"
-            id="send-options_input_max-access-count"
-          />
-          <!--
-            第十七批/U 段: 输入框最右侧加「− / +」步进按钮(用户要求, 参考官方新设计)。
-            默认空 = 不限制(placeholder「不限制」), 由 ts 的 `stepMaxAccessCount()` 负责
-            在"空 ↔ 1"之间补一个起点, 见那里的注释。
-            ⚠️ 必须走 `bitSuffix` 槽位 + `ngProjectAs`, 与 send-details 里密码那三个
-            图标按钮同一种写法 —— 直接放在输入框后面会被 `ng-content` 的默认槽吃掉。
-          -->
-          <div bitSuffix ngProjectAs="[bitSuffix]" class="tw-flex tw-items-center">
-            <button
-              type="button"
-              bitIconButton="bwi-minus-circle"
-              size="small"
-              [label]="'wardenDecrease' | i18n"
-              [disabled]="!editing()"
-              (click)="stepMaxAccessCount(-1)"
-              data-testid="max-access-count-decrease"
-            ></button>
-            <button
-              type="button"
-              bitIconButton="bwi-plus-circle"
-              size="small"
-              [label]="'wardenIncrease' | i18n"
-              [disabled]="!editing()"
-              (click)="stepMaxAccessCount(1)"
-              data-testid="max-access-count-increase"
-            ></button>
-          </div>
-          @if (editing()) {
-            <bit-hint>{{ "limitSendViewsHint" | i18n }}</bit-hint>
+    <div class="warden-send-options">
+      <bit-disclosure #optionsDisclosure>
+        <bit-card>
+          @if (maxAccessCountVisible()) {
+            <bit-form-field [disableMargin]="!hideEmailVisible() && !privateNoteVisible()">
+              <bit-label>{{ "maxAccessCount" | i18n }}</bit-label>
+              <input
+                bitInput
+                type="number"
+                step="1"
+                min="1"
+                formControlName="maxAccessCount"
+                [readonly]="!editing()"
+                [placeholder]="maxAccessCountPlaceholder"
+                id="send-options_input_max-access-count"
+              />
+              <!--
+                第十七批/U 段: 输入框最右侧加「− / +」步进按钮(用户要求, 参考官方新设计)。
+                默认空 = 不限制(placeholder「不限制」), 由 ts 的 `stepMaxAccessCount()` 负责
+                在"空 ↔ 1"之间补一个起点, 见那里的注释。
+                ⚠️ 必须走 `bitSuffix` 槽位 + `ngProjectAs`, 与 send-details 里密码那三个
+                图标按钮同一种写法 —— 直接放在输入框后面会被 `ng-content` 的默认槽吃掉。
+              -->
+              <div bitSuffix ngProjectAs="[bitSuffix]" class="tw-flex tw-items-center">
+                <button
+                  type="button"
+                  bitIconButton="bwi-minus-circle"
+                  size="small"
+                  [label]="'wardenDecrease' | i18n"
+                  [disabled]="!editing()"
+                  (click)="stepMaxAccessCount(-1)"
+                  data-testid="max-access-count-decrease"
+                ></button>
+                <button
+                  type="button"
+                  bitIconButton="bwi-plus-circle"
+                  size="small"
+                  [label]="'wardenIncrease' | i18n"
+                  [disabled]="!editing()"
+                  (click)="stepMaxAccessCount(1)"
+                  data-testid="max-access-count-increase"
+                ></button>
+              </div>
+              @if (editing()) {
+                <bit-hint>{{ "limitSendViewsHint" | i18n }}</bit-hint>
+              }
+              @if (showAccessCount()) {
+                <bit-hint>&nbsp;{{ "limitSendViewsCount" | i18n: viewsLeft() }}</bit-hint>
+              }
+            </bit-form-field>
           }
-          @if (showAccessCount()) {
-            <bit-hint>&nbsp;{{ "limitSendViewsCount" | i18n: viewsLeft() }}</bit-hint>
+          @if (hideEmailVisible()) {
+            <bit-form-control
+              class="tw-flex tw-align-middle"
+              [disableMargin]="!privateNoteVisible()"
+            >
+              <input bitCheckbox type="checkbox" formControlName="hideEmail" />
+              <bit-label>{{ "hideMyEmail" | i18n }}</bit-label>
+            </bit-form-control>
           }
-        </bit-form-field>
-      }
-      @if (hideEmailVisible()) {
-        <bit-form-control class="tw-flex tw-align-middle" [disableMargin]="!privateNoteVisible()">
-          <input bitCheckbox type="checkbox" formControlName="hideEmail" />
-          <bit-label>{{ "hideMyEmail" | i18n }}</bit-label>
-        </bit-form-control>
-      }
-      @if (privateNoteVisible()) {
-        <bit-form-field disableMargin>
-          <bit-label>{{ "privateNote" | i18n }}</bit-label>
-          <textarea bitInput rows="3" formControlName="notes" [readonly]="!editing()"></textarea>
-        </bit-form-field>
-      }
-    </bit-card>
+          @if (privateNoteVisible()) {
+            <bit-form-field disableMargin>
+              <bit-label>{{ "privateNote" | i18n }}</bit-label>
+              <textarea
+                bitInput
+                rows="3"
+                formControlName="notes"
+                [readonly]="!editing()"
+              ></textarea>
+            </bit-form-field>
+          }
+        </bit-card>
+      </bit-disclosure>
+    </div>
   }
 </bit-section>

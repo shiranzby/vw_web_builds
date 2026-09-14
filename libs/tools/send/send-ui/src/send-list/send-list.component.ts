@@ -55,8 +55,21 @@ export class SendListComponent {
   readonly searchText = input<string>("");
   readonly hideSearchBar = input<boolean>(false);
 
+  /**
+   * Whether the account has any Sends at all, ignoring the current type filter/search.
+   *
+   * `sends` is the *filtered* list, so it is empty both when the account has no Sends and
+   * when the active filter simply matches none — for example switching to "文件 Send" on an
+   * account that only has text Sends unmounted the search bar entirely, making it impossible
+   * to search your way back. Callers pass the unfiltered signal here so the bar tracks
+   * "does this account have Sends" instead.
+   */
+  readonly hasAnySends = input<boolean>(false);
+
   protected readonly showSearchBar = computed(
-    () => (this.sends().length > 0 || this.searchText().length > 0) && !this.hideSearchBar(),
+    () =>
+      (this.hasAnySends() || this.sends().length > 0 || this.searchText().length > 0) &&
+      !this.hideSearchBar(),
   );
 
   protected readonly noSearchResults = computed(

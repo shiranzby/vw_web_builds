@@ -149,6 +149,18 @@ export class SendComponent implements OnDestroy {
     initialValue: "",
   });
 
+  /**
+   * Whether the account has any Sends at all — **unfiltered**.
+   *
+   * `filteredSends` above is scoped to the active "所有 / 文本 / 文件 Send" filter, so it goes
+   * empty when a filter matches nothing. The search bar keys off this signal instead, otherwise
+   * switching to a filter with no matches would hide the very control you'd use to search.
+   */
+  protected readonly hasAnySends = toSignal(
+    this.sendItemsService.emptyList$.pipe(map((isEmpty) => !isEmpty)),
+    { initialValue: false },
+  );
+
   // Legacy variables. TODO: Remove once the SendUI refresh is permanently enabled
   SendFilterType = SendFilterType;
   SendType = SendType;
