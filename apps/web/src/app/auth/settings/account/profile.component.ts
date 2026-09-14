@@ -127,8 +127,18 @@ export class ProfileComponent implements OnInit {
   };
 
   protected readonly submit = async () => {
-    const request = new UpdateProfileRequest(this.formGroup.controls.name.value);
+    const name = this.formGroup.controls.name.value;
+    const request = new UpdateProfileRequest(name);
     await this.apiService.putProfile(request);
+
+    /* 自托管定制: 把新名字写回 `AccountService` 的账户状态。
+       少了这一步, 服务端明明已经改名成功(实测 `PUT /api/accounts/profile` -> 200 且回包里
+       就是新名字), 而设置页顶部那张账户卡片读的是 `activeAccount$.name` —— 它只在登录/解锁时
+       写过一次, 于是卡片会一直显示旧名字(用户原话"名称设置似乎并不成功, 名称一直都是 user")。
+       上游自己没有展示 `activeAccount.name` 的地方, 所以上游不需要这一步。 */
+    const userId = await firstValueFrom(getUserId(this.accountService.activeAccount$));
+    await this.accountService.setAccountName(userId, name);
+
     this.toastService.showToast({
       variant: "success",
       message: this.i18nService.t("accountUpdated"),

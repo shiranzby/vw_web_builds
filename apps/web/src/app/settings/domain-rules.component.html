@@ -19,8 +19,14 @@
       >
         <bit-form-field class="tw-flex-1 !tw-mb-0" formGroupName="{{ i }}">
           <bit-label>{{ "customDomainX" | i18n: i + 1 }} </bit-label>
+          <!--
+            自托管定制(第十三批/Q 段): 默认只占**一行**高度(原来是 rows="2" = 40px)。
+            `bitInput` 自己带 `adjustTextareaHeight()`(libs/components/src/input/input.directive.ts),
+            input 事件里会把 height 重算成 scrollHeight ⇒ 内容换行时它会**自己长高**展示第二行,
+            不必再写 JS。⚠️ 别删 rows 属性回落成浏览器默认(2 行); 也别忘了这条依赖。
+          -->
           <textarea
-            rows="2"
+            rows="1"
             bitInput
             [value]="d"
             formControlName="domain"

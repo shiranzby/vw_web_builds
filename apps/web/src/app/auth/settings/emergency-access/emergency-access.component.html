@@ -17,7 +17,17 @@
     }}</bit-callout>
   </bit-section>
   <bit-section>
-    <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
+    <!--
+      自托管定制(第十三批/Q 段): `warden-ea-head` 是窄屏"拆两行"用的标记类。
+
+      ⚠️ 为什么必须加类, 不能用结构选择器: 本组件**没有声明 `selector`**
+      (它的 @Component 里只有 templateUrl/imports), 路由直接实例化 ⇒ Angular 把它渲染成
+      `<ng-component>`, DOM 里根本不存在 `app-emergency-access` 这个元素
+      (实测宿主链是 `h2 > div > section > bit-section > div > bit-container > ng-component > main`)。
+      而 `div.tw-flex:has(> h2)` 这种结构选择器又会误伤别处(发件菜单里也有 div.tw-flex)。
+      标记类和本仓库既有的 .warden-name-row / .warden-acctcard / .warden-head-newbar 一个路子。
+    -->
+    <div class="warden-ea-head tw-flex tw-items-center tw-gap-2 tw-mb-2">
       <h2 bitTypography="h2" noMargin class="tw-mb-0">
         {{ "trustedEmergencyContacts" | i18n }}
       </h2>

@@ -76,10 +76,18 @@ export class AccountCardComponent implements OnInit {
   /** 头像用的隐藏文件选择器（只在卡片渲染出来时才存在）。 */
   private readonly avatarInput = viewChild<ElementRef<HTMLInputElement>>("avatarInput");
 
-  /** 只在设置分区显示（L4 是 `route.indexOf("/settings") === 0`）。 */
+  /**
+   * 只在「我的账户」页显示。
+   *
+   * 原来只要路径以 `/settings` 开头就显示, 于是切到「安全」「外观」「域名规则」… 时,
+   * 二级导航下面**一直**横着这张卡(用户明确要求: "这个部分仅存在于我的账户页")。
+   * 收窄到 `/settings/account` 后, 其它设置页不再渲染它; 页头右上角那个头像菜单
+   * 也不会因此在窄屏冒出来 —— 它是被 `css/vaultwarden.css` 的 F 段无条件藏掉的
+   * (`main#main-content app-account-menu { display: none }`), 与这张卡无关。
+   */
   protected readonly visible = computed(() => {
     const path = this.path();
-    return path === "/settings" || path.startsWith("/settings/");
+    return path === "/settings/account" || path.startsWith("/settings/account/");
   });
 
   /** profile.name 可能为空 —— 那就把邮箱提到主行，别显示一个空标题。 */
