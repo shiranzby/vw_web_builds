@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from "@angular/core";
+import { Component, OnInit, OnDestroy, signal } from "@angular/core";
 import { firstValueFrom, lastValueFrom, map, Observable, Subject, takeUntil } from "rxjs";
 
 import { AccountDeletionService } from "@bitwarden/angular/auth/account-deletion/account-deletion.service";
@@ -37,6 +37,13 @@ export class AccountComponent implements OnInit, OnDestroy {
   showPurgeVault$: Observable<boolean> = new Observable();
   showDeleteAccount$: Observable<boolean> = new Observable();
   verifyNewDeviceLogin: boolean = true;
+
+  /**
+   * 自托管定制(第十一批/O 段): 窄屏「更改电子邮箱」那块是否已展开。
+   * 由「电子邮箱」行右侧的入口按钮打开、由那块里的「取消」收起。
+   * 宽屏不用它 —— 宽屏那一块照官方常显(见 account.component.html 的注释)。
+   */
+  protected readonly changeEmailExpanded = signal(false);
 
   constructor(
     private accountService: AccountService,

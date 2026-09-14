@@ -50,14 +50,23 @@
     </div>
   }
 
-  <div class="tw-flex tw-gap-2">
+  <!--
+    自托管定制(第十一批/O 段):
+      · 加 .warden-cf-actions / .warden-cf-verified 两个标记: 窄屏用 CSS 把这排按钮提到
+        表单**最上面**(点「更改」后先看到「继续/取消」、再看到字段), 宽屏保持原样
+        (按钮仍在字段之后)。所以这排按钮对两个断点都渲染, 只是顺序不同。
+      · 「取消」由"仅在验证通过后显示"改成**一直渲染**: 窄屏下它就是"收起这块"的出口,
+        必须先有。宽屏用 CSS 还原官方行为(未验证时藏起来) ⇒ 桌面端零变化。
+  -->
+  <div
+    class="tw-flex tw-gap-2 warden-cf-actions"
+    [class.warden-cf-verified]="userVerificationSuccessful()"
+  >
     <button type="submit" bitButton buttonType="primary" bitFormButton>
       {{ (userVerificationSuccessful() ? "changeEmail" : "continue") | i18n }}
     </button>
-    @if (userVerificationSuccessful()) {
-      <button type="button" bitButton (click)="resetFormsToInitialState()">
-        {{ "cancel" | i18n }}
-      </button>
-    }
+    <button class="warden-cf-cancel" type="button" bitButton (click)="cancel()">
+      {{ "cancel" | i18n }}
+    </button>
   </div>
 </form>

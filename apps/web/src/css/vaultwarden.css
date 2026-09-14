@@ -483,12 +483,16 @@ bit-nav-logo bit-nav-item .bwi-shield {
   /* J14. 表头右侧的「选项」三点: 菜单里只有作用于"已选中条目"的动作, 平时常显没有
      意义 —— 窄屏默认藏起来, 进选择模式再放出。必须 visibility, 理由同上。
      ⚠️ 只在窄屏 + .warden-selectable 内: 桌面端的 ⋯ 是官方入口, 不能藏。
-     用 :last-child 而不是 L4 的 button[aria-label="选项"] —— 后者依赖中文文案,
-     换成英文界面就直接失效。 */
-  .warden-selectable thead tr > th:last-child button {
+     用直接子选择器而不是 L4 的 button[aria-label="选项"] —— 后者依赖中文文案,
+     换成英文界面就直接失效。
+     ⚠️ 第十一批/O 段改成了「> button」(原来是 "th:last-child button"): 那一格里
+        后来多了一颗「新增」(包在 .warden-head-newbar 里), 用后代选择器会把它一起
+        隐掉 —— 现象是「新增」文字在、但整颗按钮不可见(实测踩到)。
+        用直接子选择器仍然不依赖文案, 而且只命中那颗 ⋮。 */
+  .warden-selectable thead tr > th:last-child > button {
     visibility: hidden !important;
   }
-  .warden-selectable.warden-selecting thead tr > th:last-child button {
+  .warden-selectable.warden-selecting thead tr > th:last-child > button {
     visibility: visible !important;
   }
 }
@@ -532,15 +536,18 @@ bit-nav-logo bit-nav-item .bwi-shield {
 
   /* 搬进来的那颗: 与旁边「选择」胶囊同高(28px)、同样压成胶囊。
      用两个官方的 id 定位按钮(菜单根据特性开关在 #newItemButton / #newItemDropdown
-     之间二选一), 而不是 .warden-headbar 下所有 button —— 免得连 <bit-menu> 的
-     菜单项一起被压。 */
-  .warden-headbar vault-new-cipher-menu,
-  .warden-headbar vault-new-cipher-menu > div {
+     之间二选一), 而不是容器下所有 button —— 免得连 <bit-menu> 的菜单项一起被压。
+
+     ⚠️ 锚点容器在第十一批/O 段由 .warden-headbar 改成了 .warden-head-newbar
+        (「新增」从「名称」列搬到了本行最右格)。这条规则**不再命中旧容器** ——
+        改锚点时就地改了, 没有留成死规则。 */
+  .warden-head-newbar vault-new-cipher-menu,
+  .warden-head-newbar vault-new-cipher-menu > div {
     display: inline-flex;
     align-items: center;
   }
-  .warden-headbar #newItemButton,
-  .warden-headbar #newItemDropdown {
+  .warden-head-newbar #newItemButton,
+  .warden-head-newbar #newItemDropdown {
     box-sizing: border-box !important;
     height: 28px !important;
     min-height: 0 !important;
@@ -731,8 +738,8 @@ ng-dropdown-panel,
     bottom: 0;
     z-index: 60;
     align-items: stretch;
-    height: 62px;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: var(--warden-tabbar-h);
+    padding-bottom: var(--warden-safe-bottom);
     background: #ffffff;
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.06);
@@ -1436,5 +1443,267 @@ vault-totp-badge.warden-auth-badge .warden-totp-code {
   }
   .warden-auth-user {
     color: #9ca3af;
+  }
+}
+
+/* ======================================================================
+ * 第十一批 / O 段. 窄屏一批体验修复 —— **不是 L4 迁入的**
+ *
+ *   全部来自上线后的用户反馈。编号接着第十批的「N 段」用 O。
+ *      O1 搜索 + 筛选 合成一行, 去掉外层的矩形框        (vault-filter)
+ *      O2 「新增」搬到表头行最右格, 与 ⋮ 互斥           (vault-items)
+ *      O3 行内 TOTP 倒计时: 两根线改成"从左到右依次恢复" (totp-badge; **两个断点都生效**)
+ *      O4 设置-我的账户: 「保存」挪到「名称」右侧        (profile)
+ *      O5 设置-我的账户: 「更改电子邮箱」默认收起 + 入口  (profile / account / change-email)
+ *      O6 底部标签栏遮挡列表最后一条(含 iOS 安全区)      (main#main-content)
+ *
+ *   除 O3 外全部只写在 @media (max-width: 768px) 里 ⇒ 桌面端零变化。
+ *   O3 是自定义徽章自身的动效 bug(桌面端同样显示这个徽章), 所以全局修。
+ * ====================================================================== */
+
+/* ----------------------------------------------------------------------
+ * O6 的两个量: 底栏自身高度 / iOS 安全区。
+ *
+ *   ⚠️ 必须**只有这一处定义**, 底栏(G 段)与下面的"底部让位"共用:
+ *      两边各写一份字面量的话, 哪天底栏改高, 留白还按老数字算, 最后一条又被压住。
+ *   这两个变量还有一个好处 —— 安全区在无刘海设备上恒为 0, 没法在浏览器里直接验;
+ *   抽成变量后, 测试里 `--warden-safe-bottom: 34px` 就能把刘海机型的情形**模拟出来**
+ *   (见 .deploycheck/verify-batch11.mjs 里那两条"模拟安全区"断言)。
+ * ---------------------------------------------------------------------- */
+:root {
+  --warden-tabbar-h: 62px;
+  /* 底栏那根 1px 上边框 —— 它让 getBoundingClientRect().height 变成 63px,
+     少算这 1px 就会出现"留白刚好差一点"的溢出。 */
+  --warden-tabbar-border: 1px;
+  --warden-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ----------------------------------------------------------------------
+ * O3. TOTP 倒计时的两根线: 重置瞬间要"从左到右依次恢复"
+ *
+ *   形状: 徽章下沿那条线被中间凹掉 20px(给秒数让位), 于是分成左右两段
+ *   (.warden-totp-fill-a / -b), 宽度由组件按剩余时间换算后写进 [style.width]。
+ *
+ *   问题: 30s 走到 0 再回到 30 的那一瞬, 两段的目标宽度**同时**从 0 跳回满值,
+ *   两条 CSS transition 一起跑 ⇒ 看着是"并排同时涨满", 而不是一根线扫过去。
+ *
+ *   修法: 给右段加 0.45s 的 transition-delay —— 左段 0~0.45s 涨满, 右段
+ *   0.45~0.9s 接上, 合起来正好是一次从左到右的连续扫过。
+ *
+ *   ⚠️ 关键约束: delay + duration 必须 **≤ 1s**。这个组件的宽度是每秒(官方
+ *      TotpService 每秒推一帧)更新一次的; 一旦 delay+duration 超过 1s, 每帧都会
+ *      在 delay 阶段被打断、从头再等 —— 宽度会近乎**卡住不动**。所以这里取
+ *      0.45 + 0.45 = 0.9s(原来单段就是 0.9s, 总时长没变)。
+ *      不要去调成"更从容"的 1s + 1s。
+ *   ⚠️ 排空过程也会有 0.45s 的相位滞后, 但右段每秒只变化约 2px, 肉眼不可见。
+ * ---------------------------------------------------------------------- */
+.warden-totp-fill-a {
+  transition: width 0.45s linear;
+}
+.warden-totp-fill-b {
+  transition: width 0.45s linear 0.45s;
+}
+
+/* ----------------------------------------------------------------------
+ * O2 / O4 / O5 的"宽屏默认值" —— 这几样是"窄屏才出现"的元件, 宽屏必须不显示。
+ * 都放在 @media **外面**, 由下面的窄屏块逐个打开。
+ * ---------------------------------------------------------------------- */
+
+/* O2. 「新增」的最右格容器: 宽屏不渲染(宽屏用页头那颗官方「新增」) */
+.warden-head-newbar {
+  display: none;
+}
+
+/* O4. 名称行右侧那颗「保存」: 宽屏不显示(宽屏用官方原位那颗) */
+main#main-content .warden-save-inline {
+  display: none !important;
+}
+
+/* O5. 「更改电子邮箱」入口: 宽屏不显示(宽屏那一块常显在页面底部) */
+main#main-content .warden-change-email-open {
+  display: none !important;
+}
+
+/* O5. 「取消」的宽屏口径: 官方只在"主密码已验证"之后才给取消, 这里还原。
+   窄屏块里会把它强制打开(窄屏的取消是"收起这块"的出口, 必须一直有)。 */
+main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  /* ------------------------------------------------------------------
+   * O1. 搜索 + 筛选 合成一行, 并去掉外层的矩形框
+   *
+   *   结构(vault-filter.component.html):
+   *     [data-testid="filters"]            ← 外层矩形框(tw-border + tw-rounded), 去掉它
+   *       └ [data-testid="filters-body"]   ← H6 已把 padding 归零; F3 给它 display:block
+   *           ├ div.tw-mb-4 > bit-search   ← 第 1 个子元素(搜索密码库)
+   *           ├ .warden-filter-toggle      ← 筛选开关 → 挪到搜索框右侧
+   *           └ .filter × N                ← 各筛选区块(收起态由 J9 藏掉)
+   *
+   *   做法: filters-body 改 flex + wrap; 第 1 个子元素吃掉剩余宽度、开关按内容宽;
+   *   后面的 .filter 一律占满一整行(展开时仍在下面, 不挤搜索行)。
+   *   ⚠️ 选择器里必须带上 .tw-p-5 这个类: F3 那条写的是
+   *      `... > div.tw-p-5 { display: block !important }`, 权重 (1,1,4);
+   *      只写 [data-testid="filters-body"] 是 (1,1,2) —— **同权重段里类/属性个数比不过**,
+   *      !important 也救不了(两边都有)。加上 .tw-p-5 变成 (1,2,3) 才压得住。
+   *      实测踩到过: 少了它, 外层边框确实没了(那条没有竞争者)但两行纹丝不动。
+   * ------------------------------------------------------------------ */
+  main#main-content app-vault-filter [data-testid="filters"] {
+    border: 0 !important;
+  }
+  main#main-content app-vault-filter [data-testid="filters-body"].tw-p-5 {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    column-gap: 8px !important;
+    row-gap: 8px !important;
+  }
+  main#main-content app-vault-filter [data-testid="filters-body"] > div:first-child {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  /* F3 给 bit-search 留了 8px 下边距(竖排时用), 进同一行后要归零, 否则与按钮不齐 */
+  main#main-content app-vault-filter [data-testid="filters-body"] > div:first-child bit-search {
+    margin-bottom: 0 !important;
+  }
+  main#main-content app-vault-filter [data-testid="filters-body"] > .warden-filter-toggle {
+    flex: 0 0 auto !important;
+    margin-bottom: 0 !important;
+  }
+  /* 按钮模板上带的是 bitButton 的 block(整宽), 这里收回成内联尺寸 */
+  main#main-content app-vault-filter [data-testid="filters-body"] > .warden-filter-toggle button {
+    width: auto !important;
+    padding: 0 12px !important;
+    white-space: nowrap !important;
+  }
+  /* 筛选区块(0~11 个)独占整行, 展开时排在搜索行下面 */
+  main#main-content app-vault-filter [data-testid="filters-body"] > .filter {
+    flex: 1 1 100% !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * O2. 「新增」放在本行最右格 —— 与 ⋮ 互斥, 共用同一个格子
+   *
+   *   那格是 thead 的 th:last-child(也是每行 ⋮ 所在的列)。它的 ⋮ 由 J14 在窄屏
+   *   默认隐起来(visibility:hidden, 因为菜单里全是"选中之后"的批量动作) ——
+   *   空出来的位置正好给「新增」。
+   *
+   *   一进选择模式(.warden-selecting)就把「新增」整块藏掉, ⋮ 由 J14 露出来
+   *   ⇒ 两者互斥, 不会同时出现, 也不会互相盖住。
+   *
+   *   这样「名称」列只剩 J7 的「选择」一颗胶囊, 复选框列展开时不会再把它挤到
+   *   按钮下面(这就是本次要修的那个现象)。
+   * ------------------------------------------------------------------ */
+  .warden-selectable thead tr > th:last-child {
+    position: relative;
+  }
+  .warden-head-newbar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    white-space: nowrap;
+  }
+  .warden-selectable.warden-selecting .warden-head-newbar {
+    display: none !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * O4. 设置-我的账户: 「保存」挪到「名称」输入框右侧
+   *
+   *   官方那颗 .warden-save-block 在窄屏藏掉, 由 .warden-save-inline 顶上
+   *   (同一表单的 type=submit, 行为一致)。
+   *
+   *   对齐: 行内用 align-items:flex-end, 并给按钮补上与 bit-form-field 相同的
+   *   下边距(H 段把窄屏的 bit-form-field 下边距钉成 8px) —— flex 的 flex-end
+   *   对齐的是**外边距盒**, 少了它按钮会比输入框低 8px。
+   * ------------------------------------------------------------------ */
+  main#main-content .warden-name-row,
+  main#main-content .warden-email-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  main#main-content .warden-name-field,
+  main#main-content .warden-email-field {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  main#main-content .warden-save-inline {
+    display: inline-flex !important;
+    flex: 0 0 auto;
+    margin-bottom: 8px !important;
+  }
+  main#main-content .warden-save-block {
+    display: none !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * O5. 设置-我的账户: 「更改电子邮箱」默认收起
+   *
+   *   底部那一整块(大标题 + 主密码/新邮箱表单)默认不显示, 由「电子邮箱」右侧那颗
+   *   入口展开。
+   *   ⚠️ 用 class 而不是 @if 控制: @if 会把 DOM 摘掉, 从窄屏切回宽屏时那块就再也
+   *      回不来了(而宽屏要求它常显)。
+   * ------------------------------------------------------------------ */
+  main#main-content .warden-change-email {
+    display: none;
+  }
+  main#main-content .warden-change-email.warden-cf-open {
+    display: block;
+  }
+  main#main-content .warden-change-email-open {
+    display: inline-flex !important;
+    flex: 0 0 auto;
+    margin-bottom: 8px !important;
+  }
+  /* 底部那块紧跟在账户卡后面, 别再用宽屏的 64px 上间距 */
+  main#main-content .warden-change-email.tw-mt-16 {
+    margin-top: 12px !important;
+  }
+
+  /* O5. 「继续/取消」提到这块的**最上面**: 点「更改」之后先看到按钮、再看到字段。
+     form 变纵向 flex 才能用 order 调序(只在窄屏, 宽屏保持官方块级流)。 */
+  main#main-content app-change-email form {
+    display: flex;
+    flex-direction: column;
+  }
+  main#main-content app-change-email .warden-cf-actions {
+    order: -1;
+    margin-bottom: 8px;
+  }
+  /* 窄屏必须一直能看到「取消」—— 它是收起这块的出口, 未验证时也要在。
+     ⚠️ 这里两个选择器是**必须**的: 上面那条宽屏隐藏规则是
+        `main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel`
+        = 权重 (1,3,1); 只写 `.warden-cf-actions .warden-cf-cancel` 是 (1,2,2) ——
+        类/属性个数 2 < 3, 两边都带 !important 时**压不过**, 窄屏会照旧看不见「取消」。
+        带上 :not(.warden-cf-verified) 变成 (1,3,2) 才赢。(实测踩到过) */
+  main#main-content app-change-email .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel,
+  main#main-content app-change-email .warden-cf-actions .warden-cf-cancel {
+    display: inline-flex !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * O6. 底部标签栏是 position:fixed, 必须把它的**实际高度**从滚动区底部让出来
+   *
+   *   底栏: .warden-tabbar { height: var(--warden-tabbar-h) = 62px;
+   *          box-sizing: content-box; padding-bottom: var(--warden-safe-bottom) }
+   *        ⇒ 实高 = 62px + 1px 上边框 + 安全区。刘海/手势条机型安全区约 34px, 实高约 97px。
+   *   H1 原本固定留 74px —— 不带安全区的机型刚够(74 > 63), 带安全区的差了 23px。
+   *   条目数刚好铺满一屏时又没有可滚动余量, 于是最后一条被压在栏下、还滚不动。
+   *
+   *   改成**从底栏自己的高度推导**留白: 底栏高 + 上边框 + 安全区 + 12px 间隙。
+   *   安全区为 0 时结果是 75px(比 H1 的 74px 多那 1px 边框) —— 既不会在普通机型上
+   *   多留白, 也不会在刘海机型上少留。
+   * ------------------------------------------------------------------ */
+  main#main-content {
+    padding-bottom: calc(
+      var(--warden-tabbar-h) + var(--warden-tabbar-border) + var(--warden-safe-bottom) + 12px
+    ) !important;
   }
 }

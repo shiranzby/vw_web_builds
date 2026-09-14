@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, Signal, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, OnInit, output, Signal, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormBuilder, Validators } from "@angular/forms";
 import { firstValueFrom, from } from "rxjs";
@@ -131,5 +131,16 @@ export class ChangeEmailComponent implements OnInit {
     this.formGroup.controls.emailOwnershipVerification.disable();
 
     this.userVerificationSuccessful.set(false);
+  }
+
+  /**
+   * 自托管定制(第十一批/O 段): 窄屏「取消」= 清空表单 + 通知外层把这块收起来。
+   * 宽屏没人监听 cancelled, 所以宽屏行为与官方一致(只重置表单)。
+   */
+  readonly cancelled = output<void>();
+
+  protected cancel() {
+    this.resetFormsToInitialState();
+    this.cancelled.emit();
   }
 }

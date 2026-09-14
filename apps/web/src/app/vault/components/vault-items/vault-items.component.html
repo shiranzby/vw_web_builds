@@ -42,31 +42,15 @@
                  不会渲染到这里(那里 th 的内容被包在 <button> 里, 不能嵌套按钮)。 -->
             <div class="warden-headbar">
               <!--
-                自托管定制(第十批/N 段): 窄屏「新增」。官方把它放在页头(见 vault-header.component.html),
-                窄屏下页头那一段整体只剩它自己一行; 这里把它并进「名称」表头行, 省掉那一行,
-                并与右侧「选择」胶囊并排。宽屏整条 .warden-headbar 不显示, 桌面端仍是页头那颗。
+                自托管定制(第十批/N 段): 窄屏「选择」胶囊。宽屏整条 .warden-headbar 不显示,
+                桌面端与官方一致。组织保险库管理页用的是上面那个 bitSortable 分支,
+                不会渲染到这里(那里 th 的内容被包在 <button> 里, 不能嵌套按钮)。
 
-                权限位/事件全部由 vault.component.html 从 app-vault-header 透传 —— 不在这里
-                重算, 免得两处"能否新建"的判断对不上。coachmark 锚点同理由 isNarrowViewport
-                二选一(锚到被 CSS 藏起来的按钮会掉到视口左上角)。
+                (第十一批/O 段): 「新增」原先也在这一条里、与「选择」并排; 但一进选择模式
+                会多出复选框列, 「名称」表头就被挤到那颗按钮下面去了。现把它挪到本行
+                **最右侧**的表头格 —— 也就是每行 ⋮ 所在的那一列。见下面 th:last-child 里的
+                .warden-head-newbar。
               -->
-              @if (showNewCipherMenu) {
-                <vault-new-cipher-menu
-                  [canCreateCipher]="canCreateCipher"
-                  [canCreateFolder]="canCreateFolder"
-                  [canCreateSshKey]="canCreateSshKey"
-                  [canCreateCollection]="canCreateCollection"
-                  [disabled]="newCipherMenuDisabled"
-                  [coachmarkPopover]="isNarrowViewport ? addItemCoachmark.popover() : undefined"
-                  [coachmarkPopoverOpen]="addItemCoachmarkOpen"
-                  [coachmarkPosition]="coachmarkService.getStepPosition('addItem')"
-                  (cipherAdded)="cipherAdded.emit($event)"
-                  (folderAdded)="folderAdded.emit()"
-                  (collectionAdded)="collectionAdded.emit()"
-                  (onAddItemDialog)="openAddItemDialog.emit()"
-                />
-                <app-coachmark #addItemCoachmark stepId="addItem" />
-              }
               <button
                 type="button"
                 class="warden-select-toggle"
@@ -189,6 +173,36 @@
             </bit-menu>
           } @else {
             {{ "options" | i18n }}
+          }
+
+          <!--
+            自托管定制(第十一批/O 段): 窄屏「新增」, 放在本行**最右**的表头格。
+            为什么是这一格: 这一格平时是 ⋮(选项), 而窄屏由 J14 默认把它隐起来(它管的
+            全是"选中之后"的批量动作) —— 空着的位置正好放「新增」。进选择模式时 CSS
+            把「新增」藏掉、⋮ 露出来, 两者互斥, 共用同一格, 所以「名称」列不用再让位。
+
+            权限位/事件全部由 vault.component.html 从 app-vault-header 透传 —— 不在这里
+            重算, 免得两处"能否新建"的判断对不上。coachmark 锚点同理由 isNarrowViewport
+            二选一(锚到被 CSS 藏起来的按钮会掉到视口左上角)。
+          -->
+          @if (showNewCipherMenu) {
+            <div class="warden-head-newbar">
+              <vault-new-cipher-menu
+                [canCreateCipher]="canCreateCipher"
+                [canCreateFolder]="canCreateFolder"
+                [canCreateSshKey]="canCreateSshKey"
+                [canCreateCollection]="canCreateCollection"
+                [disabled]="newCipherMenuDisabled"
+                [coachmarkPopover]="isNarrowViewport ? addItemCoachmark.popover() : undefined"
+                [coachmarkPopoverOpen]="addItemCoachmarkOpen"
+                [coachmarkPosition]="coachmarkService.getStepPosition('addItem')"
+                (cipherAdded)="cipherAdded.emit($event)"
+                (folderAdded)="folderAdded.emit()"
+                (collectionAdded)="collectionAdded.emit()"
+                (onAddItemDialog)="openAddItemDialog.emit()"
+              />
+              <app-coachmark #addItemCoachmark stepId="addItem" />
+            </div>
           }
         </th>
       </tr>

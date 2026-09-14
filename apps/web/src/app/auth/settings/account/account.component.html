@@ -1,11 +1,26 @@
 <app-header></app-header>
 
 <bit-container>
-  <app-profile></app-profile>
+  <app-profile
+    [canChangeEmail]="(showChangeEmail$ | async) ?? false"
+    [changeEmailExpanded]="changeEmailExpanded()"
+    (openChangeEmail)="changeEmailExpanded.set(true)"
+  ></app-profile>
 
-  <div *ngIf="showChangeEmail$ | async" class="tw-mt-16">
+  <!--
+    自托管定制(第十一批/O 段): 窄屏下这块默认收起, 由「电子邮箱」右侧那颗入口展开;
+    宽屏照旧常显 —— 桌面端零变化。
+
+    ⚠️ 用它自己的 class + CSS 控制显隐, 不用 @if: @if 会把 DOM 真的摘掉, 从窄屏转到
+       宽屏后就再也显示不出来(而宽屏要求它常显)。class 切换两个方向都跟着走。
+  -->
+  <div
+    *ngIf="showChangeEmail$ | async"
+    class="tw-mt-16 warden-change-email"
+    [class.warden-cf-open]="changeEmailExpanded()"
+  >
     <h1 bitTypography="h1">{{ "changeEmail" | i18n }}</h1>
-    <app-change-email></app-change-email>
+    <app-change-email (cancelled)="changeEmailExpanded.set(false)"></app-change-email>
   </div>
 
   <app-danger-zone>

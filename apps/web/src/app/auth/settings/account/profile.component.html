@@ -12,14 +12,54 @@
     <form [formGroup]="formGroup" [bitSubmit]="submit">
       <div class="tw-grid tw-grid-cols-12 tw-gap-6">
         <div class="tw-col-span-12 @3xl:tw-col-span-6">
-          <bit-form-field>
-            <bit-label>{{ "name" | i18n }}</bit-label>
-            <input bitInput formControlName="name" />
-          </bit-form-field>
-          <bit-form-field>
-            <bit-label>{{ "email" | i18n }}</bit-label>
-            <input bitInput [value]="email()" readonly />
-          </bit-form-field>
+          <!--
+            自托管定制(第十一批/O 段): 窄屏把「保存」挪到「名称」输入框右侧。
+            官方把它放在整个表单之后, 窄屏上它独占一行。
+            这里多渲染一颗(同一个表单的 type=submit, 点了行为一致): 窄屏显示这一颗、
+            藏掉下面那颗, 宽屏反过来。
+            ⚠️ 为什么用"多渲染一颗 + CSS 切换"而不是按断点 @if —— 断点判断不会跟着视口
+               变化走(切屏/横竖屏/改窗口都会错), 本仓库所有显隐一律用 CSS 就是这个原因。
+          -->
+          <div class="warden-name-row">
+            <bit-form-field class="warden-name-field">
+              <bit-label>{{ "name" | i18n }}</bit-label>
+              <input bitInput formControlName="name" />
+            </bit-form-field>
+            <button
+              class="warden-save-inline"
+              type="submit"
+              buttonType="primary"
+              bitButton
+              bitFormButton
+            >
+              {{ "save" | i18n }}
+            </button>
+          </div>
+
+          <!--
+            自托管定制(第十一批/O 段): 窄屏「更改电子邮箱」入口。
+            官方把「更改电子邮箱」整块(大标题 + 表单)常显在页面底部, 窄屏上很占高度。
+            改法: 邮件行右侧给一颗入口, 底部那块默认收起、点了才展开。
+            展开态存在 account 组件里(那一块在那个组件模板里), 这里只负责 emit 与显示。
+            宽屏这颗不显示(被 CSS 藏掉), 底部那块照旧常显 —— 桌面端零变化。
+          -->
+          <div class="warden-email-row">
+            <bit-form-field class="warden-email-field">
+              <bit-label>{{ "email" | i18n }}</bit-label>
+              <input bitInput [value]="email()" readonly />
+            </bit-form-field>
+            @if (canChangeEmail() && !changeEmailExpanded()) {
+              <button
+                class="warden-change-email-open"
+                type="button"
+                buttonType="secondary"
+                bitButton
+                (click)="openChangeEmail.emit()"
+              >
+                {{ "changeEmail" | i18n }}
+              </button>
+            }
+          </div>
         </div>
         <div class="tw-col-span-12 @3xl:tw-col-span-6 tw-row-start-1 @3xl:tw-row-start-auto">
           <div class="tw-mb-3 tw-flex tw-align-middle tw-items-center">
@@ -63,7 +103,8 @@
           }
         </div>
       </div>
-      <button bitButton bitFormButton type="submit" buttonType="primary">
+      <!-- 官方原位的那颗「保存」: 窄屏藏掉, 由上面 .warden-save-inline 代替 -->
+      <button class="warden-save-block" bitButton bitFormButton type="submit" buttonType="primary">
         {{ "save" | i18n }}
       </button>
     </form>

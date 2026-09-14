@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, OnInit, signal } from "@angular/core";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  OnInit,
+  output,
+  signal,
+} from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormControl, FormGroup } from "@angular/forms";
 import { firstValueFrom, map, switchMap } from "rxjs";
@@ -28,6 +36,18 @@ import { ChangeAvatarDialogComponent } from "./change-avatar-dialog.component";
   imports: [SharedModule, DynamicAvatarComponent, AccountFingerprintComponent],
 })
 export class ProfileComponent implements OnInit {
+  /**
+   * 窄屏「更改电子邮箱」入口是否可见。
+   * 由 account 组件透传 —— 只有它拿着 showChangeEmail$(= 有没有主密码)。
+   */
+  readonly canChangeEmail = input(false);
+
+  /** 窄屏上「更改电子邮箱」是否已展开 —— 展开后入口按钮让位给组件自带的「继续/取消」。 */
+  readonly changeEmailExpanded = input(false);
+
+  /** 窄屏点了「更改电子邮箱」入口。真正的展开态由 account 组件持有(那一块在它模板里)。 */
+  readonly openChangeEmail = output<void>();
+
   protected readonly loading = signal(true);
   protected readonly profile = signal<ProfileResponse | undefined>(undefined);
   protected readonly fingerprintMaterial = signal<string | undefined>(undefined);
