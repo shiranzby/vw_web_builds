@@ -1,17 +1,29 @@
 <!--
   结构(照设计图):
     ┌────────────┐   .warden-totp-chip  淡蓝色圆角矩形 —— 完整, 不裁剪
-    │  524 453   │   .warden-totp-body  码, 铺满整个盒体 -> 落在矩形正中
-    └─────  ────┘   .warden-totp-clip  只把"下面那条线"的中间挖掉 20px,
-       └ 27 ┘          于是那条线被裁成左右两条(1px 边框 + 3px 进度条)
+    │  524 453   │   .warden-totp-body  盒内的"文本舞台"(绝对定位, 溢出裁掉)
+    └─────  ────┘       ├ .warden-totp-cur     主码(位于正中)
+       └ 27 ┘           ├ .warden-totp-next    次码(最后 10s 出现在主码下方)
+                        └ .warden-totp-ghost   旧主码(升格那 0.3s 上移淡出)
+                    .warden-totp-clip  只把"下面那条线"的中间挖掉 20px,
+                       于是那条线被裁成左右两条(1px 边框 + 3px 进度条)
                     .warden-totp-sec   秒数, 骑在"下面的边"上
 
   样式全部在 css/vaultwarden.css 的「B 段」, 这里只负责结构。
+
+  ⚠️ 三行都**常驻 DOM**, 不用 @if 开关次码行: 新创建的元素在**同一帧**就被加上样式,
+  浏览器不会为它跑 transition(进场动画会变成"直接出现")。常驻 + 用 class 控透明度
+  才能保证次码是"淡入"出来的。空字符串时该行为空且 opacity:0, 不占布局(绝对定位)。
+
+  ⚠️ 徽章尺寸**任何时刻都不变**(46px 高 / min-width 84px): 主次切换全靠这三行的
+  位移与透明度, 不动盒体 —— 用户明确否掉了"外围矩形变高变低"那版。
 -->
 @if (state(); as s) {
   <span
     class="warden-totp-code"
     [class.warden-totp-low]="s.low"
+    [class.warden-totp-warn]="s.warn"
+    [class.warden-totp-rolling]="rolling()"
     [class.warden-totp-copied]="copied()"
     role="button"
     tabindex="0"
@@ -27,7 +39,18 @@
       <span class="warden-totp-fill-b" [style.width]="s.rightWidth"></span>
     </span>
     <span class="warden-totp-body">
-      <span class="warden-totp-digits">{{ copied() ? "已复制" : s.digits }}</span>
+      <!-- 旧主码: 只在升格那 0.3s 有文本, 由 CSS 负责"上移 + 淡出" -->
+      <span class="warden-totp-row warden-totp-ghost" aria-hidden="true">
+        {{ retiringDigits() ?? "" }}
+      </span>
+
+      <!-- 主码: 点了就是复制它(次码刻意不可单独点击, 免得误用) -->
+      <span class="warden-totp-row warden-totp-digits">{{ copied() ? "已复制" : s.digits }}</span>
+
+      <!-- 次码: 纯展示, 不带文字标签(用户定的), 只在小窗口内淡入 -->
+      <span class="warden-totp-row warden-totp-next" aria-hidden="true">
+        {{ s.nextDigits ?? "" }}
+      </span>
     </span>
     <span class="warden-totp-sec">{{ s.sec }}</span>
   </span>

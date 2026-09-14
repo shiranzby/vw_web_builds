@@ -1,4 +1,9 @@
-<app-header>
+<!--
+  `warden-bare-header`: 自托管定制(S 段)的钩子 —— 窄屏把整个页头(含左上角「Send」
+  标题)藏掉, 给内容让出纵向空间。用**类名 + CSS** 而不是删模板: 桌面端要保留标题,
+  而且删模板会连带影响投影进来的「新增」按钮与无障碍标题。见 vaultwarden.css 的 S2。
+-->
+<app-header class="warden-bare-header">
   @if (!disableSend()) {
     <tools-new-send-dropdown></tools-new-send-dropdown>
   }

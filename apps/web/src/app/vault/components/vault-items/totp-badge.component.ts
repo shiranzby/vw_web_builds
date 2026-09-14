@@ -1,9 +1,18 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from "@angular/core";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from "@angular/core";
 import { toObservable, toSignal } from "@angular/core/rxjs-interop";
 import { catchError, map, of, switchMap } from "rxjs";
 
 import { PlatformUtilsService } from "@bitwarden/common/platform/abstractions/platform-utils.service";
-import { TotpService } from "@bitwarden/common/vault/abstractions/totp.service";
+import { TotpCodes, TotpService } from "@bitwarden/common/vault/abstractions/totp.service";
 import {
   CipherViewLike,
   CipherViewLikeUtils,
@@ -13,8 +22,19 @@ import { I18nPipe } from "@bitwarden/ui-common";
 /** 剩余秒数低于该值时整体转成"即将过期"配色。 */
 const LOW_THRESHOLD_SECONDS = 5;
 
+/** 剩余秒数低于该值时出现「下一代码」(次码)。两个阈值是**独立**的: 先提示"要换了", 再告警。 */
+const NEXT_THRESHOLD_SECONDS = 10;
+
 /** 「已复制」闪烁时长(ms)。 */
 const COPIED_FLASH_MS = 700;
+
+/**
+ * 「升格」动画时长(ms)。
+ * ⚠️ 必须与 `css/vaultwarden.css` 的 `.warden-totp-rolling`(`promote`/`retire` 两个
+ * keyframes)以及进度条那一刻的 `transition-duration: 0.3s` 保持一致 ——
+ * 用户明确要求"进度条 0.3s 归零重跑"要和新主码的闪光**同步**。
+ */
+const ROLL_MS = 300;
 
 /**
  * 下沿那条线中间挖掉的宽度(px)。
@@ -26,10 +46,16 @@ const TRACK_GAP = 20;
 type TotpBadgeState = {
   /** 码, 已从中间断开(123456 -> "123 456")。 */
   digits: string;
+  /** 下一窗口的码(同样断开); 不在 ≤10s 窗口内时为 null。 */
+  nextDigits: string | null;
+  /** 当前时间属于第几个窗口。用来识别"跨窗口"这一刻。 */
+  step: number;
   /** 剩余秒数。 */
   sec: number;
   /** 是否已进入"即将过期"配色。 */
   low: boolean;
+  /** 是否进入"最后 10 秒"(= 次码可见)。 */
+  warn: boolean;
   /** 进度条左段宽度(覆盖周期的前一半)。 */
   leftWidth: string;
   /** 进度条右段宽度(缺口之后的那部分)。 */
@@ -57,6 +83,23 @@ type TotpBadgeState = {
  * (`vault/totp-page`)都要用它, 后者是路由级组件、不挂在任何 NgModule 的 declarations 里。
  * ⚠️ 模板里的 `| i18n` 因此不再由宿主模块提供 —— 必须自己 import `I18nPipe`,
  *    否则编译期报 NG8004。其它绑定(@if / [class.x] / [style.width] / 事件)都是内置的。
+ *
+ * ---------------------------------------------------------------------------
+ * 第十五批(S 段)新增: 「下一代码」。
+ *
+ * 结论: **不需要自己实现 TOTP** —— SDK 的 `generate_totp(key, time_ms?)` **自带时间戳参数**,
+ * 把时间推进到下一个窗口的开头就得到下一代码(见 `TotpService.getCodes$`)。
+ *
+ * 三条硬规格(用户逐条定的), 改动时别丢:
+ *   ① **徽章尺寸一动不动**(仍 46px 高 / min-width 84px, 列表行高也不变) ——
+ *      早先那版"徽章从 96×46 长到 112×64"被明确否掉("不能外围的矩形也变高变低, 会很丑"),
+ *      所以次码的进出全靠**盒内两个文本行上下位移**, 不动盒体。
+ *   ② 相位只有三段: `idle`(只剩主码) → `warn`(最后 10s: 次码淡入到下方, 主码上移 9px)
+ *      → `roll`(跨窗口那 0.3s: 新主码从下方上移+变色, 旧主码继续上移淡出)。
+ *      `roll` 期间那一帧由 `.warden-totp-ghost` 负责"旧主码淡出" —— 它拿的是**上一窗口**的码,
+ *      因为此刻主码的绑定已经换成了新码。
+ *   ③ 进度条归零重跑与主码闪光**同为 0.3s**(`ROLL_MS` / CSS 同步)。
+ * ---------------------------------------------------------------------------
  */
 @Component({
   selector: "vault-totp-badge",
@@ -78,30 +121,88 @@ export class VaultTotpBadgeComponent {
   protected readonly copied = signal(false);
 
   /**
-   * 每秒一帧的 TOTP 流。
+   * 每秒一帧的 TOTP 流(当前码 + 下一码)。
    *
    * `catchError` 是必要的: 用户库里可能存着一条格式不合法的 otpauth URI, 官方组件只在
    * 条目详情对话框里出错(影响一个弹窗), 而我们这里跑在**列表的每一行**上 ——
    * 一个未捕获的错误会掀掉整张表。
+   *
+   * 下一码只在最后 `NEXT_THRESHOLD_SECONDS` 秒内才计算(在 `TotpService.getCodes$` 里门控),
+   * 所以稳态开销与只取当前码时**完全一致**。
    */
   protected readonly state = toSignal(
     toObservable(this.totpSecret).pipe(
       switchMap((secret) =>
-        secret ? this.totpService.getCode$(secret).pipe(catchError(() => of(null))) : of(null),
+        secret
+          ? this.totpService
+              .getCodes$(secret, NEXT_THRESHOLD_SECONDS)
+              .pipe(catchError(() => of(null)))
+          : of(null),
       ),
-      map((response) => (response ? this.toState(response.code, response.period) : null)),
+      map((response) => (response ? this.toState(response) : null)),
     ),
     { initialValue: null },
   );
 
-  private toState(code: string, period: number): TotpBadgeState {
-    const remain = period - (Math.round(Date.now() / 1000) % period);
-    const progress = remain / period;
+  /** 「升格」那 0.3s 内为 true。 */
+  protected readonly rolling = signal(false);
+
+  /** 旧主码(即将淡出的那个) —— 只在 `rolling` 期间有值。 */
+  protected readonly retiringDigits = signal<string | null>(null);
+
+  /** 上一次取样里显示的主码, 用来在跨窗口时喂给 `retiringDigits`。 */
+  private readonly previousDigits = "";
+
+  /** 上一次取样所属的窗口序号; null = 还没有基线(首次取样不做跨窗口判断)。 */
+  private readonly lastStep: number | null = null;
+
+  private readonly rollTimer?: ReturnType<typeof setTimeout>;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.rollTimer));
+
+    /*
+     * 跨窗口检测: `step` 变了就是刚换码。此时把**上一帧的码**交给 ghost 去淡出,
+     * 并开一个 0.3s 的 `rolling` 窗口(CSS 的两个 keyframes 都挂在它下面)。
+     *
+     * 为什么不在模板里直接比较: 模板拿不到"上一帧", 而 effect 里能留住 ——
+     * 这一刻 `state().digits` 已经是**新**码了, 旧码只能从 `previousDigits` 取。
+     */
+    effect(() => {
+      const s = this.state();
+      if (!s) {
+        return;
+      }
+
+      const step = this.lastStep;
+      this.lastStep = s.step;
+      if (step === null || step === s.step) {
+        this.previousDigits = s.digits;
+        return;
+      }
+
+      this.retiringDigits.set(this.previousDigits);
+      this.previousDigits = s.digits;
+      this.rolling.set(true);
+      clearTimeout(this.rollTimer);
+      this.rollTimer = setTimeout(() => {
+        this.rolling.set(false);
+        this.retiringDigits.set(null);
+      }, ROLL_MS);
+    });
+  }
+
+  private toState(response: TotpCodes): TotpBadgeState {
+    const progress = response.sec / response.period;
 
     return {
-      digits: this.group(code),
-      sec: remain,
-      low: remain <= LOW_THRESHOLD_SECONDS,
+      digits: this.group(response.code),
+      nextDigits: response.nextCode ? this.group(response.nextCode) : null,
+      step: Math.floor(Math.round(Date.now() / 1000) / response.period),
+      sec: response.sec,
+      low: response.sec <= LOW_THRESHOLD_SECONDS,
+      /* 连带要求 nextDigits 有值: 算不出下一码时(坏 URI)只显示主码, 不做半截动画。 */
+      warn: response.nextCode != null && response.sec <= NEXT_THRESHOLD_SECONDS,
       leftWidth: this.fillWidth(Math.min(progress, 0.5)),
       rightWidth: this.fillWidth(Math.max(progress - 0.5, 0)),
     };

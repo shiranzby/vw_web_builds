@@ -60,6 +60,23 @@ export class SelectComponent<T> implements ControlValueAccessor {
   readonly placeholder = input(this.i18nService.t("selectPlaceholder"));
   readonly closed = output();
 
+  /**
+   * 窄屏标志(断点与 `css/vaultwarden.css` 全部移动端规则一致: 768px)。
+   *
+   * 窄屏把下拉做成**纯选择器**, 见模板里 `[searchable]` 那行的注释: 用户要的是
+   * "点整块就展开、再点整块就收起、全程不弹软键盘", 而这恰好就是 ng-select 在
+   * `searchable = false` 时的**原生**行为 —— 它的 `handleMousedown()` 里写着
+   * `if (this.searchable()) { this.open(); } else { this.toggle(); }`
+   * (见 `node_modules/@ng-select/ng-select/fesm2022/ng-select-ng-select.mjs:2448`)。
+   * 也就是说 `searchable` 为真时**再点一次永远只是 open()**, 收不起来。
+   * 桌面端保持可搜索不变(那里没有软键盘, 长列表反而更需要输入过滤)。
+   */
+  private readonly narrowQuery = window.matchMedia("(max-width: 768px)");
+  protected readonly narrow = signal(this.narrowQuery.matches);
+
+  /** 转屏 / 拉宽窗口时跟着换档: 窄屏纯选择器 ↔ 宽屏可搜索。 */
+  private readonly onNarrowChange = (event: MediaQueryListEvent) => this.narrow.set(event.matches);
+
   protected readonly selectedValue = signal<T | undefined | null>(undefined);
   readonly selectedOption: Signal<Option<T> | null | undefined> = computed(() =>
     this.findSelectedOption(this.items(), this.selectedValue()),
@@ -100,10 +117,13 @@ export class SelectComponent<T> implements ControlValueAccessor {
       },
     });
 
+    this.narrowQuery.addEventListener("change", this.onNarrowChange);
+
     /* 面板还开着时组件被销毁(例如所在对话框被直接关掉), 监听与盯梢都不能留在外面。 */
     inject(DestroyRef).onDestroy(() => {
       this.detachKeyboardFit?.();
       this.stopGeometryWatch();
+      this.narrowQuery.removeEventListener("change", this.onNarrowChange);
     });
   }
 
@@ -249,7 +269,10 @@ export class SelectComponent<T> implements ControlValueAccessor {
     const visBottom = visTop + visH;
 
     const r = this.select().element.getBoundingClientRect();
-    const below = visBottom - r.bottom - GAP - PAD;
+    /* 底栏固定钉在视口底部, 会占掉那一带 —— 可用高度按它扣掉, 面板就落不到底栏上。
+       为什么不用 z-index 解决: 见 `tabbarInset()` 的注释。 */
+    const usableBottom = visBottom - this.tabbarInset();
+    const below = usableBottom - r.bottom - GAP - PAD;
     const above = r.top - visTop - GAP - PAD;
     const up = above > below;
     const avail = Math.round(Math.min(Math.max(up ? above : below, MIN), visH - 2 * PAD));
@@ -260,7 +283,7 @@ export class SelectComponent<T> implements ControlValueAccessor {
       visTop + PAD,
       Math.min(
         up ? Math.round(r.top) - GAP - avail : Math.round(r.bottom) + GAP,
-        visBottom - PAD - avail,
+        usableBottom - PAD - avail,
       ),
     );
 
@@ -276,6 +299,22 @@ export class SelectComponent<T> implements ControlValueAccessor {
     if (items) {
       items.style.maxHeight = `${Math.max(60, avail - 4)}px`;
     }
+  }
+
+  /**
+   * 底部标签栏在视口底部占掉的高度(px); 没有底栏时是 0。
+   *
+   * **为什么"把底栏 z-index 抬到面板之上"这条常规解法不行**: 面板的 z-index 由
+   * `css/vaultwarden.css` 的 M 段钉在 `2400 !important`(那是为了压过 cdk 浮层的
+   * 2050 上下), 底栏要盖住面板就得 > 2400 —— 于是**所有对话框也会被底栏盖掉**,
+   * 那是比"面板压住底栏"严重得多的回退。
+   *
+   * 所以这里改成**几何避让**: 量出底栏实际高度, 从"向下展开"的可用空间里扣掉,
+   * 面板自然就停在了底栏上方。往上展开的那一支不需要扣(底栏在下面)。
+   */
+  private tabbarInset(): number {
+    const tabbar = document.getElementById("warden-tabbar");
+    return tabbar ? Math.round(tabbar.getBoundingClientRect().height) : 0;
   }
 
   /**

@@ -1197,13 +1197,17 @@ body.warden-avatar-on .warden-acct-avatar {
   border-radius: 9px;
   box-shadow: inset 0 0 0 1px #b9cdf3;
 }
+/* 盒内的"文本舞台"。S 段起不再用 flex 居中一行, 而是让三行(.cur/.next/.ghost)
+   各自绝对定位、以中线为锚做位移动画 —— 所以这里只负责"铺满 + 溢出裁掉":
+   溢出裁剪是保险, 万一 keyframes 把某一行推出盒体, 也不会洇到列表行上。 */
 .warden-totp-body {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
 }
+/* 三行文本共用的字型(主码/次码**同字号**: 主次靠位置、颜色和透明度区分 ——
+   字号不同会让"新主码从次码位置升上来"这一下出现跳字)。 */
+.warden-totp-row,
 .warden-totp-digits {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
@@ -1213,6 +1217,90 @@ body.warden-avatar-on .warden-acct-avatar {
   line-height: 1;
   white-space: nowrap;
 }
+/* 行的几何: 以盒体垂直中线为锚, 靠 translateY 在 ±9px 之间移动 —— 盒体本身不动。 */
+.warden-totp-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  text-align: center;
+  transform: translateY(-50%);
+  transition:
+    transform 0.25s ease,
+    opacity 0.22s ease;
+}
+/* ----------------------------------------------------------------------
+ * 「下一代码」(S 段, 规范由用户逐条定)
+ *
+ *   常态:  只有主码, 居中。
+ *   最后10s: 主码上移 9px; 次码从下方 13px 处**淡入**到下方 9px。
+ *   归零(0.3s): 新主码从 +9px 上移到正中并**由灰变蓝**; 旧主码从 -9px 继续上移淡出。
+ *
+ *   ⚠️ 全程**不动盒体尺寸**(仍是 46px 高 / min-width 84px) —— 用户明确否掉了
+ *      "徽章从 96×46 长到 112×64"那版("不能外围的矩形也变高变低, 会很丑"),
+ *      也不接受整行高度变化。所以主次只能靠"盒内位移 + 透明度"表达。
+ *   ⚠️ 次码不带到文字标签、也**不单独可点**(点徽章永远是复制**当前**码)。
+ * ---------------------------------------------------------------------- */
+
+/* 次码: 平时不可见, 停在主码下方 13px 处等它该出现的那一刻 */
+.warden-totp-next {
+  opacity: 0;
+  color: #6b7280;
+  transform: translateY(calc(-50% + 13px));
+}
+/* 旧主码: 只在升格那 0.3s 有文本(由组件喂上一窗口的码) */
+.warden-totp-ghost {
+  opacity: 0;
+  color: #6b7280;
+  transform: translateY(calc(-50% - 9px));
+}
+/* 最后 10 秒: 主码上移、次码淡入 —— 一上一下, 主次一眼可分 */
+.warden-totp-warn .warden-totp-digits {
+  transform: translateY(calc(-50% - 9px));
+}
+.warden-totp-warn .warden-totp-next {
+  opacity: 0.92;
+  transform: translateY(calc(-50% + 9px));
+}
+
+/* 升格(跨窗口那一瞬)。
+   ⚠️ 这里必须用 keyframes 而不是 transition: 两行的**起点都不是自己上一帧的位置**
+      (新主码上一帧在正中、旧主码上一帧在 -9px), 只有显式写 from 才接得上那一下。 */
+.warden-totp-rolling .warden-totp-digits {
+  animation: warden-totp-promote 0.3s ease;
+}
+.warden-totp-rolling .warden-totp-ghost {
+  animation: warden-totp-retire 0.3s ease;
+}
+@keyframes warden-totp-promote {
+  from {
+    transform: translateY(calc(-50% + 9px));
+    color: #6b7280;
+    opacity: 0.92;
+  }
+  to {
+    transform: translateY(-50%);
+    color: #175ddc;
+    opacity: 1;
+  }
+}
+@keyframes warden-totp-retire {
+  from {
+    transform: translateY(calc(-50% - 9px));
+    opacity: 0.92;
+  }
+  to {
+    transform: translateY(calc(-50% - 18px));
+    opacity: 0;
+  }
+}
+/* 进度条"归零重跑"与上面那 0.3s **同长**(用户要求两者同步)。
+   稳态每秒的推进仍用 0.9s —— 统一改成 0.3s 会让每格"走 0.3s 后停 0.7s", 一顿一顿。 */
+.warden-totp-rolling .warden-totp-fill-a,
+.warden-totp-rolling .warden-totp-fill-b {
+  transition-duration: 0.3s;
+}
+
 /* 进度条: 沿下沿 3px。宽度由组件按"缺口不计入时长"换算后写进 [style.width] */
 .warden-totp-fill-a,
 .warden-totp-fill-b {
@@ -1902,5 +1990,76 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
    * ------------------------------------------------------------------ */
   main#main-content app-header tools-new-send-dropdown {
     display: none !important;
+  }
+}
+
+/* ======================================================================
+ * S 段. 移动端适配(第十五批) —— 全部只在窄屏生效
+ *
+ *   S0 下拉改"纯选择器"之后的收尾(藏掉 R 段那个透明热点按钮)
+ *   S1 三处左上角标题隐去, 让出纵向空间
+ *   S2 自定义域名输入框: placeholder 垂直居中
+ * ====================================================================== */
+@media (max-width: 768px) {
+  /* ------------------------------------------------------------------
+   * S0. 藏掉 R 段那个「点箭头即展开」的透明热点按钮。
+   *
+   *   窄屏现在改由 ng-select 的**原生**行为接管: 模板里 `[searchable]="!narrow()"`,
+   *   窄屏取假 ⇒ 它的 `handleMousedown()` 走 `toggle()`, 点**整块容器**就展开/收起,
+   *   而且输入框是 readOnly ⇒ 全程不弹软键盘。覆盖层不但多余, **还有害**:
+   *   它是 `<ng-select>` 外面的兄弟元素, ng-select 判"外部点击"只比
+   *   `_select.contains(target)` ⇒ 按它会被判成"点了外面", 跟自己那次 toggle 打架。
+   *
+   *   桌面端(仍可搜索)继续保留, 行为一字未变。
+   * ------------------------------------------------------------------ */
+  .warden-select-open {
+    display: none !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * S1-a. 独立「验证码」页左上角那个 22px 标题 —— 整条去掉(含它 14px 的下边距)。
+   *
+   *   用户要求"验证码页的左上角「验证码」标题可以去掉", 目的是省纵向空间。
+   *   这里用 CSS 而不是删模板: 标题还是页面的 h1(`<h1 class="warden-auth-title">`),
+   *   删掉会让该页失去可访问的一级标题; 而且桌面端样式共用同一份, 删了没法只影响窄屏。
+   * ------------------------------------------------------------------ */
+  main#main-content h1.warden-auth-title {
+    display: none !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * S1-b. 发送页「Send」/ 报告页「报告」标题 —— 连页头一起藏。
+   *
+   *   页头是**共享组件**(`app-header` → `web-header` → `bit-header`), 想只影响这两页
+   *   就得有个页级钩子: 两个页模板上挂了 `warden-bare-header` 类(见
+   *   `send.component.html` / `reports-home.component.html`), 选择器靠它限定范围。
+   *
+   *   为什么整块 `bit-header` 藏而不是只藏 `h1`: 那两页窄屏的页头里**只剩标题**
+   *   (「新增」按钮已被 R6 藏掉), 而 `<header>` 自己还带 `tw-py-6` + `tw-mb-3` 的
+   *   内边距与外边距 —— 只藏 h1 会留下一条几十像素的空带, 等于白改。
+   * ------------------------------------------------------------------ */
+  main#main-content app-header.warden-bare-header bit-header {
+    display: none !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * S2. 自定义域名输入框: 让 placeholder 相对输入框高度垂直居中。
+   *
+   *   结构(`settings/domain-rules.component.html`):
+   *     bit-form-field > bit-label + <textarea rows="1" bitInput>
+   *   `bitInput` 的 `adjustTextareaHeight()` 把 height 写成 scrollHeight(行内样式),
+   *   而 `bit-form-field` 的 label 是**堆叠**在框内的 ⇒ 文本被顶到上半部分。
+   *   这里把 textarea 撑成"框内剩余高度"并用 `line-height` 把那一行居中:
+   *   `line-height` 等于自身高度时, 单行文本正好落在垂直中点(与官方
+   *   `field-container` 的做法一致)。⚠️ 必须 `!important` —— 行内 height 由
+   *   `adjustTextareaHeight()` 写, 普通声明盖不住它(样式表里的 !important
+   *   优先级高于**非** !important 的行内声明)。
+   * ------------------------------------------------------------------ */
+  main#main-content bit-form-field textarea[bitInput] {
+    height: 32px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    line-height: 32px !important;
+    resize: none !important;
   }
 }

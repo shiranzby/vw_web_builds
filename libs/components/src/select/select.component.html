@@ -1,3 +1,13 @@
+<!--
+  `[searchable]` —— 窄屏(S 段起)关掉搜索输入框, 换来三条用户明确要的行为:
+    ① 点**整块**容器 = `toggle()`: 展开、**再点收起**(ng-select 的 handleMousedown:
+       `if (searchable()) { open() } else { toggle() }`);
+    ② 输入框只读 ⇒ 全程不弹软键盘;
+    ③ 不再需要"只能靠输入一个字符才弹出面板"那个别扭路径。
+  ⚠️ 反面: `searchable = true` 时"再点一次"只会 `open()`(已是开着的 no-op),
+  所以永远收不起来 —— 用户报的"点箭头展开后无法再点箭头关闭"就是这个。
+  桌面端保持可搜索(那里没有软键盘, 长列表更需要输入过滤)。
+-->
 <div class="tw-relative tw-w-full">
   <ng-select
     [ngModel]="selectedOption()"
@@ -5,6 +15,7 @@
     [disabled]="disabled"
     [placeholder]="placeholder()"
     [items]="items()"
+    [searchable]="!narrow()"
     (blur)="onBlur()"
     [labelForId]="searchInputId()"
     [clearable]="false"
@@ -61,6 +72,13 @@
     · 视觉 0 变化 —— 原生箭头的图标仍在底下正常渲染, 我们这层是透明的;
     · 只覆盖右侧 44px, 输入框与其余区域的原生行为(点容器 toggle、输入过滤)一概不动;
     · tabindex="-1" + 无内部元素 ⇒ 不进入 Tab 序列; 键盘操作仍走 ng-select 自己那套。
+
+    ⚠️ 第十五批(S 段)起, **窄屏把这个按钮藏掉**(vaultwarden.css 的 S0):
+    窄屏已经用 `[searchable]="false"` 让"整块容器 = toggle()"成为原生行为, 这个
+    覆盖层不但多余, 还有害 —— 它是 `<ng-select>` **外面**的兄弟元素, 而 ng-select
+    判定"是不是外部点击"只比 `this._select.contains(target)`
+    (`ng-select-ng-select.mjs:1729`), 于是按它会被判成"点了外面", 与它自己的
+    toggle 打架。桌面端(仍可搜索)继续保留它, 行为一字未变。
   -->
   <button
     type="button"
