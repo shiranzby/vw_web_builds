@@ -8,7 +8,7 @@
   所以永远收不起来 —— 用户报的"点箭头展开后无法再点箭头关闭"就是这个。
   桌面端保持可搜索(那里没有软键盘, 长列表更需要输入过滤)。
 -->
-<div class="tw-relative tw-w-full">
+<div class="tw-relative tw-w-full" (pointerdown)="onFieldPointerdown($event)">
   <ng-select
     [ngModel]="selectedOption()"
     (ngModelChange)="onChange($event)"
@@ -58,34 +58,17 @@
   </ng-select>
 
   <!--
-    自托管定制(第十四批/R 段): 「点最右侧箭头即展开」的显式开关。
+    自托管定制(第十六批/T 段): 这里原来并排放着一个 44px 宽的透明热点按钮
+    `<button class="warden-select-open">`(第十四批加的, 目的是"点最右侧箭头即展开")。
 
-    为什么要自己加一个按钮, 而不是靠 ng-select 自己的 `.ng-arrow-wrapper`:
-    那个箭头是 `<span>` 且只有 **25×20px**, 点击链是"touchstart → touchend →
-    浏览器**合成** mousedown/mouseup/click → Angular 的 (click)"。真机上任何一环
-    (软键盘弹起引起滚动、合成 click 被吞、手指偏移到输入框上)都可能让那一次 toggle
-    落空, 表现就是用户报的"点箭头没反应, 必须先在输入框里输入一个字符才会弹出"。
+    **已删除**, 原因是它是错的解法: 它在 `<ng-select>` **外面**, 而 ng-select 判"外部点击"
+    只比 `this._select.contains($event.target)`(ng-select-ng-select.mjs 的 `_checkToClose`),
+    且它自己的模板里绑着 `(outsideClick)="close()"`
+    (`<ng-dropdown-panel … (outsideClick)="close()">`) ⇒ 按这个按钮会被判成"点了外面":
+    "pointerdown 里 toggle 开一次 + outsideClick 关一次" = 面板只闪一下就没了。
 
-    这里改成: 覆盖一个**透明的大触摸目标**(宽 44px × 整个控件高, 见 vaultwarden.css
-    的 .warden-select-open)在箭头位置上, 用 **pointerdown**(不依赖 click 合成)直接
-    调 NgSelectComponent.toggle()。
-    · 视觉 0 变化 —— 原生箭头的图标仍在底下正常渲染, 我们这层是透明的;
-    · 只覆盖右侧 44px, 输入框与其余区域的原生行为(点容器 toggle、输入过滤)一概不动;
-    · tabindex="-1" + 无内部元素 ⇒ 不进入 Tab 序列; 键盘操作仍走 ng-select 自己那套。
-
-    ⚠️ 第十五批(S 段)起, **窄屏把这个按钮藏掉**(vaultwarden.css 的 S0):
-    窄屏已经用 `[searchable]="false"` 让"整块容器 = toggle()"成为原生行为, 这个
-    覆盖层不但多余, 还有害 —— 它是 `<ng-select>` **外面**的兄弟元素, 而 ng-select
-    判定"是不是外部点击"只比 `this._select.contains(target)`
-    (`ng-select-ng-select.mjs:1729`), 于是按它会被判成"点了外面", 与它自己的
-    toggle 打架。桌面端(仍可搜索)继续保留它, 行为一字未变。
+    能力没有丢: 现在由包装 div 上的 `(pointerdown)`(`onFieldPointerdown()`)接管,
+    **整块**控件(含最右侧那块箭头区)按下去都能展开; 窄屏再按一次收起。
+    为什么这样就不会误判成外部点击: 事件目标是 `<ng-select>` 内部的元素。
   -->
-  <button
-    type="button"
-    class="warden-select-open"
-    tabindex="-1"
-    [attr.aria-label]="placeholder()"
-    [attr.aria-expanded]="select().isOpen()"
-    (pointerdown)="togglePanel($event)"
-  ></button>
 </div>

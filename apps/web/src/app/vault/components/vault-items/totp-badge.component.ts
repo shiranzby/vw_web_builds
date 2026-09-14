@@ -48,8 +48,6 @@ type TotpBadgeState = {
   digits: string;
   /** 下一窗口的码(同样断开); 不在 ≤10s 窗口内时为 null。 */
   nextDigits: string | null;
-  /** 当前时间属于第几个窗口。用来识别"跨窗口"这一刻。 */
-  step: number;
   /** 剩余秒数。 */
   sec: number;
   /** 是否已进入"即将过期"配色。 */
@@ -95,10 +93,21 @@ type TotpBadgeState = {
  *      早先那版"徽章从 96×46 长到 112×64"被明确否掉("不能外围的矩形也变高变低, 会很丑"),
  *      所以次码的进出全靠**盒内两个文本行上下位移**, 不动盒体。
  *   ② 相位只有三段: `idle`(只剩主码) → `warn`(最后 10s: 次码淡入到下方, 主码上移 9px)
- *      → `roll`(跨窗口那 0.3s: 新主码从下方上移+变色, 旧主码继续上移淡出)。
- *      `roll` 期间那一帧由 `.warden-totp-ghost` 负责"旧主码淡出" —— 它拿的是**上一窗口**的码,
- *      因为此刻主码的绑定已经换成了新码。
+ *      → `roll`(换码那 0.3s: 新主码从下方上移+变色, 旧主码继续上移淡出)。
+ *      `roll` 期间那一帧由 `.warden-totp-ghost` 负责"旧主码淡出" —— 它拿的是**上一窗口**的码。
  *   ③ 进度条归零重跑与主码闪光**同为 0.3s**(`ROLL_MS` / CSS 同步)。
+ *
+ * 🔴 第十六批(T 段)修正了 `roll` 的**触发条件** —— 这一条是"到点后还是原主码、
+ *    然后闪一下才变新码"的根因:
+ *    第十五批用 `step = floor(round(Date.now()/1000) / period)` 判定跨窗口, 与
+ *    `TotpService.getCodes$` 里的 `sec` 同源(都用了 `Math.round`)。而 `Math.round` 会在
+ *    窗口边界**前最多 0.5 秒**就越过边界 ⇒ 会在"码还没换"的那一帧就开启动画, 于是升格
+ *    动画拿着**旧码**跑, 等下一秒新码送到时才闪一下换掉。
+ *    实测(`.deploycheck/probe-b16-totp-frames.mjs`, 把动画放慢 10 倍逐帧截图):
+ *    动画前 4 帧(约 1 秒)徽章的 `digits` 行仍是旧码, 第 5 帧才变新码 —— 两次采样里命中一次,
+ *    所以表现为"依然存在问题"。
+ *    现在改为**只看"主码本身变了"**(`prev !== s.digits`): 动画与真正显示出来的码天然同步,
+ *    与任何时钟/相位都无关。`step` 字段随之删除(它只服务于旧判据)。
  * ---------------------------------------------------------------------------
  */
 @Component({
@@ -166,10 +175,6 @@ export class VaultTotpBadgeComponent {
   // eslint-disable-next-line @bitwarden/components/enforce-readonly-angular-properties
   private previousDigits = "";
 
-  /** 上一次取样所属的窗口序号; null = 还没有基线(首次取样不做跨窗口判断)。 */
-  // eslint-disable-next-line @bitwarden/components/enforce-readonly-angular-properties
-  private lastStep: number | null = null;
-
   // eslint-disable-next-line @bitwarden/components/enforce-readonly-angular-properties
   private rollTimer?: ReturnType<typeof setTimeout>;
 
@@ -177,8 +182,12 @@ export class VaultTotpBadgeComponent {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.rollTimer));
 
     /*
-     * 跨窗口检测: `step` 变了就是刚换码。此时把**上一帧的码**交给 ghost 去淡出,
-     * 并开一个 0.3s 的 `rolling` 窗口(CSS 的两个 keyframes 都挂在它下面)。
+     * 跨窗口检测: **主码本身变了**(`prev !== s.digits`)就是刚换码。此时把**上一帧的码**
+     * 交给 ghost 去淡出, 并开一个 0.3s 的 `rolling` 窗口(CSS 的两个 keyframes 都挂在它下面)。
+     *
+     * 🔴 不要退回"按时钟算窗口序号"的判据(见类注释里第十六批那段): 那种判据与 SDK 取码
+     *    的时钟相位可能差半个窗口, 会拿着旧码开跑动画, 表现成"闪一下才变新码"。
+     *    用"码变了"做判据, 动画与屏幕上真正显示的码天然同帧。
      *
      * 为什么不在模板里直接比较: 模板拿不到"上一帧", 而 effect 里能留住 ——
      * 这一刻 `state().digits` 已经是**新**码了, 旧码只能从 `previousDigits` 取。
@@ -189,9 +198,12 @@ export class VaultTotpBadgeComponent {
         return;
       }
 
-      const step = this.lastStep;
-      this.lastStep = s.step;
-      if (step === null || step === s.step) {
+      if (this.previousDigits === s.digits) {
+        return;
+      }
+
+      /* 首次取样(`previousDigits` 还是空串)不做动画, 只建立基线。 */
+      if (this.previousDigits === "") {
         this.previousDigits = s.digits;
         return;
       }
@@ -213,7 +225,6 @@ export class VaultTotpBadgeComponent {
     return {
       digits: this.group(response.code),
       nextDigits: response.nextCode ? this.group(response.nextCode) : null,
-      step: Math.floor(Math.round(Date.now() / 1000) / response.period),
       sec: response.sec,
       low: response.sec <= LOW_THRESHOLD_SECONDS,
       /* 连带要求 nextDigits 有值: 算不出下一码时(坏 URI)只显示主码, 不做半截动画。 */

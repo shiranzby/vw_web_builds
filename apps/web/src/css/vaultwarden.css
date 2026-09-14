@@ -1878,29 +1878,24 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
  * ====================================================================== */
 
 /* ----------------------------------------------------------------------
- * R0. 「点最右侧箭头即展开」的触摸热点(所有宽度都生效, 不只窄屏)
+ * R0. 【第十六批已退役】「点最右侧箭头即展开」的透明热点按钮 `.warden-select-open`
  *
- *   配合 libs/components/src/select/select.component.html 里那个覆盖在箭头上的
- *   <button class="warden-select-open">: 它对 ng-select 原生箭头(25×20px 的 <span>)
- *   做**透明覆盖**, 把触摸目标放大到 44px × 整个控件高, 并改用 pointerdown 直接
- *   调 NgSelectComponent.toggle() —— 不再依赖"真机把 touchstart/touchend 合成成 click"这一串。
+ *   原方案: 在 <ng-select> **外面**并排放一个 44px 宽透明 <button>, 用 pointerdown
+ *   直接调 `NgSelectComponent.toggle()`, 好绕开"真机把 touchstart/touchend 合成
+ *   mousedown/click 不一定到"的问题(第十四批)。
  *
- *   ⚠️ 这里**只做定位与放大**, 不要给它任何背景/边框/图标 —— 原生箭头的图形仍在底下
- *      正常渲染, 视觉必须保持 0 变化。
+ *   为什么撤掉它(第十六批, 用户报"点了只在方框下面闪一下浅灰色一层就没了"):
+ *   ng-select 判"外部点击"只比 `this._select.contains($event.target)`, 而这个按钮
+ *   是 `<ng-select>` 的**兄弟节点** ⇒ 按它必然被判成"点了外面", 它自己模板里绑着
+ *   `(outsideClick)="close()"`(ng-select-ng-select.mjs: 模板 `<ng-dropdown-panel …
+ *   (outsideClick)="close()">`) ⇒ "pointerdown 里 toggle 开一次 + outsideClick 关一次"
+ *   = 面板闪一下就消失。Chromium 因为 pointerdown 的 preventDefault 会掐掉兼容
+ *   mouse 事件而侥幸正常, 但这条链本身是错的。
+ *
+ *   替代: 把 handler 挂到 bit-select 模板的**外层包装 div** 上(`(pointerdown)`),
+ *   详见 libs/components/src/select/select.component.ts 的 `onFieldPointerdown()` ——
+ *   目标元素在 `<ng-select>` 内部 ⇒ 永远不触发 outsideClick, 且同样不依赖 mousedown 合成。
  * -------------------------------------------------------------------- */
-.warden-select-open {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 44px; /* 触摸目标下限; 原生的 .ng-arrow-wrapper 只有 25px 宽 */
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  z-index: 2; /* 必须压住 ng-select 容器内的原生箭头 */
-}
 
 @media (max-width: 768px) {
   /* ------------------------------------------------------------------
@@ -1996,25 +1991,24 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
 /* ======================================================================
  * S 段. 移动端适配(第十五批) —— 全部只在窄屏生效
  *
- *   S0 下拉改"纯选择器"之后的收尾(藏掉 R 段那个透明热点按钮)
+ *   S0 【已退役, 见下】下拉改"纯选择器"之后的收尾(当年藏的 R 段透明热点按钮)
  *   S1 三处左上角标题隐去, 让出纵向空间
  *   S2 自定义域名输入框: placeholder 垂直居中
+ *      ⚠️ 第十六批/T 段把它的**选择器收窄**到页级钩子 `.warden-domain-row`
+ *         (原来那条会连窄屏所有多行 textarea 一起压成 32px 单行)。见下面 T 段说明。
+ *   S3 → **已升级为 T 段 T2**(第十六批): 右侧减号按钮对齐"输入框那一行"。
+ *        它本身是第十六批的新改动, 不再挂在 S 段编号下。
  * ====================================================================== */
 @media (max-width: 768px) {
   /* ------------------------------------------------------------------
-   * S0. 藏掉 R 段那个「点箭头即展开」的透明热点按钮。
+   * S0. 【第十六批已退役】当年用来藏 R 段那个透明热点按钮 `warden-select-open`。
    *
-   *   窄屏现在改由 ng-select 的**原生**行为接管: 模板里 `[searchable]="!narrow()"`,
-   *   窄屏取假 ⇒ 它的 `handleMousedown()` 走 `toggle()`, 点**整块容器**就展开/收起,
-   *   而且输入框是 readOnly ⇒ 全程不弹软键盘。覆盖层不但多余, **还有害**:
-   *   它是 `<ng-select>` 外面的兄弟元素, ng-select 判"外部点击"只比
-   *   `_select.contains(target)` ⇒ 按它会被判成"点了外面", 跟自己那次 toggle 打架。
-   *
-   *   桌面端(仍可搜索)继续保留, 行为一字未变。
+   *   第十六批把那个按钮**整个删掉**了(原委见上面 R0 的退役说明): 它是 `<ng-select>`
+   *   的兄弟节点 ⇒ 按它必然被 ng-select 判成"外部点击"并 `close()`, 是"点一下只在
+   *   方框下面闪一层就没了"的可疑来源之一。替代方案见
+   *   `select.component.ts` 的 `onFieldPointerdown()`(handler 挂在包装 div 上,
+   *   目标在 `<ng-select>` 内部 ⇒ 不触发 outsideClick)。
    * ------------------------------------------------------------------ */
-  .warden-select-open {
-    display: none !important;
-  }
 
   /* ------------------------------------------------------------------
    * S1-a. 独立「验证码」页左上角那个 22px 标题 —— 整条去掉(含它 14px 的下边距)。
@@ -2046,7 +2040,7 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
    * S2. 自定义域名输入框: 让 placeholder 相对输入框高度垂直居中。
    *
    *   结构(`settings/domain-rules.component.html`):
-   *     bit-form-field > bit-label + <textarea rows="1" bitInput>
+   *     .warden-domain-row > bit-form-field > bit-label + <textarea rows="1" bitInput>
    *   `bitInput` 的 `adjustTextareaHeight()` 把 height 写成 scrollHeight(行内样式),
    *   而 `bit-form-field` 的 label 是**堆叠**在框内的 ⇒ 文本被顶到上半部分。
    *   这里把 textarea 撑成"框内剩余高度"并用 `line-height` 把那一行居中:
@@ -2054,12 +2048,66 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
    *   `field-container` 的做法一致)。⚠️ 必须 `!important` —— 行内 height 由
    *   `adjustTextareaHeight()` 写, 普通声明盖不住它(样式表里的 !important
    *   优先级高于**非** !important 的行内声明)。
+   *
+   *   ⚠️⚠️ 选择器**必须**走 `.warden-domain-row` 这个页级钩子(第十六批修正):
+   *      S 段最初写的是 `main#main-content bit-form-field textarea[bitInput]`,
+   *      而那个组合全仓库 20+ 处都有 —— 备注(`additional-options-section.component.html`,
+   *      rows="5")、Send、导入、SM 申请全是它 ⇒ **移动端备注框被压成 32px 一行**。
+   *      钩子类的来历见 domain-rules.component.html 里的注释。
    * ------------------------------------------------------------------ */
-  main#main-content bit-form-field textarea[bitInput] {
+  main#main-content .warden-domain-row bit-form-field textarea[bitInput] {
     height: 32px !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     line-height: 32px !important;
     resize: none !important;
+  }
+}
+
+/* ======================================================================
+ * T 段. 移动端第四轮反馈(第十六批) —— 与第十/十一/十三/十四/十五批同理:
+ *        **不是 L4 迁入的**, 是上线后按用户反馈新增的, 不占 L4 的字母/编号。
+ *
+ *   T1 下拉「点了只在方框下面闪一层浅灰色、根本不展开」的根治
+ *        → libs/components/src/select/select.component.{html,ts}
+ *      撤掉 R 段那个 `<ng-select>` **兄弟**热点按钮(它必被 ng-select 的
+ *      outsideClick 判成"点了外面" ⇒ 开一次立刻被关), 改由包装 div 上的
+ *      `(pointerdown)` 接管, 且**只接管窄屏**(桌面搜索/焦点/原生箭头全原样)。
+ *      ⚠️ 这一条不改 CSS —— 静态判据只在 .main.js 里(CI 第 24 项)。
+ *   T2 「自定义域名」行: 右侧减号按钮对齐"输入框那一行"
+ *        → 本段下面两条规则(由 S 段的 S3 升级编号而来)
+ *      + S2 的选择器已收窄到页级钩子 `.warden-domain-row`(见上面 S2 的说明)
+ *      + 钩子类加在 apps/web/src/app/settings/domain-rules.component.html 的行 div 上
+ *   T3 TOTP 升格动画: 触发判据由"按时钟算窗口序号 step"改成"主码本身变了"
+ *        → vault-items/totp-badge.component.ts + libs/common/.../totp.service.ts
+ *      ⚠️ 同样不改 CSS —— 静态判据是 main.js 里 `Math.floor(Date.now()/1e3)`
+ *         出现、且 `Math.round(Date.now()/1e3)` 消失(CI 第 24 项)。
+ *
+ * ⚠️ 本段两条 T2 规则**必须**留在 @media (max-width: 768px) 里:
+ *    顶格会让桌面端那一行也变成 flex-end, 而桌面端按钮与输入框本来就已对齐。
+ * ====================================================================== */
+@media (max-width: 768px) {
+  /* ------------------------------------------------------------------
+   * T2. 自定义域名行: 右侧那个减号按钮要对齐"输入框那一行"的中心(第十六批)。
+   *
+   *   用户报:"居中确实修好了, 但右边的减号按钮没有居中, 高度没对齐左侧输入框的一行"。
+   *   根因不在按钮, 而在**行的对齐基准**: `.warden-domain-row` 是 `tw-items-center`,
+   *   而左侧 `bit-form-field` 的高度 = label(20px) + 间距(gap-2 = 8px) + 输入框(42px)
+   *   = 70px ⇒ 按钮被对齐到"label + 输入框"这一**整块**的中心, 比输入框那一行高 10px。
+   *   实测(`probe-b16-domain.mjs`, 390×844) —— 改前:
+   *     行[181..259] cy=220 | field[181..251] cy=216 | label[181..201]
+   *     输入框外框[209..251] cy=230 | textarea[214..246] cy=230 | 按钮[200..240] cy=220
+   *
+   *   改法: 行改 `flex-end`(按钮底边对齐**输入框外框的底边** 251), 同时把 field 自己的
+   *   `margin-bottom: 8px` 清零 —— 模板本来就写了 `!tw-mb-0`(作者意图), 只是被组件自身
+   *   样式盖住了; 不清零的话 flex 行高会按 78px 算, 按钮会掉到 cy=239。
+   *   改后实测: 按钮[211..251] cy=231, 输入框中线 230 ⇒ 残差 **1px**
+   *   (40px 高按钮 vs 42px 外框, 底对齐的必然残差, 肉眼不可见)。
+   * ------------------------------------------------------------------ */
+  main#main-content .warden-domain-row {
+    align-items: flex-end !important;
+  }
+  main#main-content .warden-domain-row > bit-form-field {
+    margin-bottom: 0 !important;
   }
 }

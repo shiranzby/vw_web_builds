@@ -13,8 +13,17 @@
       <span class="tw-sr-only">{{ "loading" | i18n }}</span>
     </p>
     <ng-container formArrayName="customDomain" *ngIf="!loading">
+      <!--
+        `warden-domain-row` 是给 `css/vaultwarden.css` 窄屏规则用的**页级钩子**
+        (同类做法: `app-header` 上的 `warden-bare-header`, 见 S1-b)。
+
+        ⚠️ 为什么必须加这个类、而不是直接写 `bit-form-field textarea[bitInput]`:
+        那个组合在**全仓库有 20+ 处**(备注、Send、导入、SM 申请…), 其中
+        `additional-options-section.component.html` 的备注框是 `rows="5"`。
+        S 段最初就是用了那个全局选择器 ⇒ 移动端备注框被压成 32px 一行(第十六批发现并修正)。
+      -->
       <div
-        class="tw-flex tw-items-center tw-gap-2 tw-mb-6"
+        class="warden-domain-row tw-flex tw-items-center tw-gap-2 tw-mb-6"
         *ngFor="let d of custom; let i = index; trackBy: indexTrackBy"
       >
         <bit-form-field class="tw-flex-1 !tw-mb-0" formGroupName="{{ i }}">

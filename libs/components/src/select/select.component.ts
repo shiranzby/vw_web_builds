@@ -404,31 +404,50 @@ export class SelectComponent<T> implements ControlValueAccessor {
   }
 
   /**
-   * 自托管定制(第十四批/R 段): 点在右侧箭头覆盖层上 → **直接**开/关面板。
+   * 自托管定制(第十六批/T 段): 「按控件即展开/收起」—— 由**我们**在 pointerdown 里做。
    *
-   * 为什么用 `pointerdown` 而不是 `click`: 用户报的是真机上"点箭头没反应, 必须先在
-   * 输入框里敲一个字符面板才出来"。真机上 click 要经过
-   * `touchstart → touchend → 浏览器合成 mousedown/mouseup/click` 这一串,
-   * 中间任何一环被吞(软键盘弹起引起滚动、iOS 的手势识别、手指落点偏到输入框上)
-   * 都会让那一次 toggle 落空。`pointerdown` 是浏览器在**按下瞬间**直接派发的指针事件,
-   * 不依赖 click 的合成, 所以更可靠; 桌面端鼠标同样走 pointerdown, 行为一致。
+   * ---------------------------------------------------------------------------
+   * 1) 为什么自己接 pointerdown, 不靠 ng-select 的 `(mousedown)`:
+   *    ng-select 的 `handleMousedown()` 是 `if (searchable()) { open() } else { toggle() }`。
+   *    窄屏我们把 `searchable` 取假, 于是"点整块容器 toggle"在**桌面浏览器**里确实成立;
+   *    但那条路要求浏览器把一次触摸**合成出 mousedown**(`touchstart → touchend →
+   *    合成 mousedown/mouseup/click`)。第十四批就是在真机上踩到这一串中间被吞
+   *    ("点箭头没反应, 必须先在输入框里敲一个字符面板才出来")。`pointerdown` 是按下
+   *    瞬间直接派发的指针事件, 不依赖合成 ⇒ 可靠得多。
    *
-   * 两个 `preventDefault/stopPropagation` 都是**必须**的:
-   * · `preventDefault()` —— 阻止后续再合成一次 click; 否则 `pointerdown` 里 toggle 一次、
-   *   合成的 click 又冒到 ng-select 容器上 toggle 一次, "开一次关一次"净效果=没反应。
-   * · `stopPropagation()` —— 同理, 别让这次按下冒泡到 `.ng-select-container` 自己的
-   *   `(click)="toggle()"`。
+   * 2) 为什么挂在**包装 div** 上, 而不是像第十四批那样在外面并排放一个兄弟按钮:
+   *    ng-select 判"外部点击"只比 `this._select.contains($event.target)`, 而它自己的
+   *    模板里绑着 `(outsideClick)="close()"`(见 ng-select 的 `<ng-dropdown-panel …>`)
+   *    ⇒ 按兄弟节点必然被判成"点了外面": "开一次 + 关一次" = 面板只在方框下面闪一层
+   *    就没了(用户第十六批报的正是这个现象)。挂在包装 div 上时, 事件**目标**仍是
+   *    `<ng-select>` 内部的元素 ⇒ 永不触发 outsideClick, 而事件照样冒泡到包装 div。
    *
-   * ⚠️ 用 ng-select **自己的 `toggle()`**, 不要手写 `if (isOpen) close() else open()`:
-   * `NgSelectComponent.isOpen` 在 v21 是 `ModelSignal<boolean>`(即一个**函数**),
-   * `if (ngSelect.isOpen)` 恒为真 ⇒ 永远只走 close(), 面板永远打不开(第十四批踩过)。
+   * 3) `preventDefault()` 是必须的: 规范里"pointerdown 被取消 ⇒ 不再补发兼容 mouse
+   *    事件(mousedown/mouseup/click)"。所以一次按下只 toggle 一次, 也不会再让
+   *    ng-select 自己的 `handleMousedown()` 二次 toggle; 同理那次按下也不会被
+   *    `outsideClickEvent="mousedown"` 的 document 监听收到 ⇒ 不会"开一次立刻关一次"。
+   *    窄屏输入框是 readOnly, 不需要焦点 ⇒ 掐掉鼠标事件没有副作用。
+   *
+   * 4) 只接管**窄屏**。宽屏 `searchable = true`, 原生逻辑有两处细节不能碰:
+   *    · 点输入框要能落光标 / 选中文本 —— 掐掉 mousedown 会一起掐掉焦点与选区;
+   *    · `.ng-arrow-wrapper` 命中区宽 25px 而可见三角只有 ~10px, 两侧那 15px 的原生
+   *      行为是 `handleArrowClick()`(开↔关)。我们若在 pointerdown 里先 `open()`,
+   *      紧接着原生 mousedown 就会走 `handleArrowClick()` 看到"已开"⇒ `close()`,
+   *      面板反而闪一下 —— 正是要修掉的那类症状。所以宽屏一律不干预。
+   *
+   * ⚠️ 只接管"按在控件本体上"的那一下: 面板是 `appendTo="body"`, 点选项时事件根本不
+   *    经过这个包装 div, 所以那条 `contains()` 判定是防御性的, 别删。
    */
-  protected togglePanel(event: Event): void {
-    event.preventDefault();
-    event.stopPropagation();
-    if (this.disabled) {
+  protected onFieldPointerdown(event: PointerEvent): void {
+    if (!this.narrow() || this.disabled) {
       return;
     }
+
+    if (!this.select().element.contains(event.target as Node)) {
+      return;
+    }
+
+    event.preventDefault();
     this.select().toggle();
   }
 
