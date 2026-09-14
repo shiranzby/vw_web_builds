@@ -150,13 +150,28 @@ export class VaultTotpBadgeComponent {
   /** 旧主码(即将淡出的那个) —— 只在 `rolling` 期间有值。 */
   protected readonly retiringDigits = signal<string | null>(null);
 
+  /*
+   * 下面三个字段是组件的内部簿记 —— 不进模板, 由 effect / setTimeout 回调写入。
+   *
+   * 🔴 必须逐行 `eslint-disable-next-line`: 仓库的 `enforce-readonly-angular-properties`
+   *    对 **OnPush 组件**强制"所有类属性必须 readonly"(见 eslint.config.mjs 里
+   *    `onlyOnPush: true`, 只作用于 *.component.ts), 但它**不区分该属性是否会被重新赋值**
+   *    —— `--fix` 会盲目补上 `readonly` ⇒ `tsc` 立刻报 TS2540
+   *    (Cannot assign to ... because it is a read-only property), 整个 `dist:oss:selfhost` 挂掉。
+   *    实测(2026-09-14): pre-commit 的 lint-staged 补了 readonly ⇒ 4 个 TS2540。
+   *    同样的写法在仓库里已有先例: libs/vault/.../date-field-group.component.ts 对
+   *    ControlValueAccessor 的三个回调就是这么处理的。
+   */
   /** 上一次取样里显示的主码, 用来在跨窗口时喂给 `retiringDigits`。 */
-  private readonly previousDigits = "";
+  // eslint-disable-next-line @bitwarden/components/enforce-readonly-angular-properties
+  private previousDigits = "";
 
   /** 上一次取样所属的窗口序号; null = 还没有基线(首次取样不做跨窗口判断)。 */
-  private readonly lastStep: number | null = null;
+  // eslint-disable-next-line @bitwarden/components/enforce-readonly-angular-properties
+  private lastStep: number | null = null;
 
-  private readonly rollTimer?: ReturnType<typeof setTimeout>;
+  // eslint-disable-next-line @bitwarden/components/enforce-readonly-angular-properties
+  private rollTimer?: ReturnType<typeof setTimeout>;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.rollTimer));
