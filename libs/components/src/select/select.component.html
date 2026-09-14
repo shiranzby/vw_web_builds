@@ -1,46 +1,73 @@
-<ng-select
-  [ngModel]="selectedOption()"
-  (ngModelChange)="onChange($event)"
-  [disabled]="disabled"
-  [placeholder]="placeholder()"
-  [items]="items()"
-  (blur)="onBlur()"
-  [labelForId]="searchInputId()"
-  [clearable]="false"
-  (open)="onOpen()"
-  (close)="onClose()"
-  appendTo="body"
-  outsideClickEvent="mousedown"
-  [keyDownFn]="onKeyDown"
-  [attr.aria-label]="selectedOption()?.label ?? placeholder()"
->
-  <ng-template ng-option-tmp let-item="item">
-    <div class="tw-flex tw-justify-between tw-items-center" [title]="item.label">
-      <div class="tw-flex tw-gap-2 tw-flex-1 tw-min-w-0">
-        <div class="tw-flex-initial tw-self-center">
-          @if (item.icon != null) {
-            <bit-icon [name]="item.icon" fixedWidth />
-          }
-        </div>
-        <div class="tw-flex tw-flex-col tw-min-w-0">
-          <div
-            bitTypography="body2"
-            class="tw-leading-5 tw-flex-1 tw-text-ellipsis tw-overflow-hidden"
-          >
-            {{ item.label }}
+<div class="tw-relative tw-w-full">
+  <ng-select
+    [ngModel]="selectedOption()"
+    (ngModelChange)="onChange($event)"
+    [disabled]="disabled"
+    [placeholder]="placeholder()"
+    [items]="items()"
+    (blur)="onBlur()"
+    [labelForId]="searchInputId()"
+    [clearable]="false"
+    (open)="onOpen()"
+    (close)="onClose()"
+    appendTo="body"
+    outsideClickEvent="mousedown"
+    [keyDownFn]="onKeyDown"
+    [attr.aria-label]="selectedOption()?.label ?? placeholder()"
+  >
+    <ng-template ng-option-tmp let-item="item">
+      <div class="tw-flex tw-justify-between tw-items-center" [title]="item.label">
+        <div class="tw-flex tw-gap-2 tw-flex-1 tw-min-w-0">
+          <div class="tw-flex-initial tw-self-center">
+            @if (item.icon != null) {
+              <bit-icon [name]="item.icon" fixedWidth />
+            }
           </div>
-          @if (item.description) {
-            <div bitTypography="helper" class="tw-text-fg-body tw-font-normal tw-truncate">
-              {{ item.description }}
+          <div class="tw-flex tw-flex-col tw-min-w-0">
+            <div
+              bitTypography="body2"
+              class="tw-leading-5 tw-flex-1 tw-text-ellipsis tw-overflow-hidden"
+            >
+              {{ item.label }}
             </div>
-          }
+            @if (item.description) {
+              <div bitTypography="helper" class="tw-text-fg-body tw-font-normal tw-truncate">
+                {{ item.description }}
+              </div>
+            }
+          </div>
         </div>
+        @if (item.metaData) {
+          <div bitTypography="helper">
+            {{ item.metaData }}
+          </div>
+        }
       </div>
-      @if (item.metaData) {
-        <div bitTypography="helper">
-          {{ item.metaData }}
-        </div>
-      }
-    </div>
-  </ng-template>
-</ng-select>
+    </ng-template>
+  </ng-select>
+
+  <!--
+    自托管定制(第十四批/R 段): 「点最右侧箭头即展开」的显式开关。
+
+    为什么要自己加一个按钮, 而不是靠 ng-select 自己的 `.ng-arrow-wrapper`:
+    那个箭头是 `<span>` 且只有 **25×20px**, 点击链是"touchstart → touchend →
+    浏览器**合成** mousedown/mouseup/click → Angular 的 (click)"。真机上任何一环
+    (软键盘弹起引起滚动、合成 click 被吞、手指偏移到输入框上)都可能让那一次 toggle
+    落空, 表现就是用户报的"点箭头没反应, 必须先在输入框里输入一个字符才会弹出"。
+
+    这里改成: 覆盖一个**透明的大触摸目标**(宽 44px × 整个控件高, 见 vaultwarden.css
+    的 .warden-select-open)在箭头位置上, 用 **pointerdown**(不依赖 click 合成)直接
+    调 NgSelectComponent.toggle()。
+    · 视觉 0 变化 —— 原生箭头的图标仍在底下正常渲染, 我们这层是透明的;
+    · 只覆盖右侧 44px, 输入框与其余区域的原生行为(点容器 toggle、输入过滤)一概不动;
+    · tabindex="-1" + 无内部元素 ⇒ 不进入 Tab 序列; 键盘操作仍走 ng-select 自己那套。
+  -->
+  <button
+    type="button"
+    class="warden-select-open"
+    tabindex="-1"
+    [attr.aria-label]="placeholder()"
+    [attr.aria-expanded]="select().isOpen()"
+    (pointerdown)="togglePanel($event)"
+  ></button>
+</div>

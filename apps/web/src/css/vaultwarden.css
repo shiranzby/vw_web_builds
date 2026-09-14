@@ -1781,3 +1781,126 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
     display: flex !important;
   }
 }
+
+/* ======================================================================
+ * R. 第十四批 —— 用户对移动端的第二轮反馈(10 条)
+ *
+ *   与 Q 段同理: **不是 L4 迁入的**, 是上线后按反馈新增的。数值全部来自运行期实测
+ *   (见 warden-worker/.deploycheck/probe-b14-*.mjs), 不是估的。
+ * ====================================================================== */
+
+/* ----------------------------------------------------------------------
+ * R0. 「点最右侧箭头即展开」的触摸热点(所有宽度都生效, 不只窄屏)
+ *
+ *   配合 libs/components/src/select/select.component.html 里那个覆盖在箭头上的
+ *   <button class="warden-select-open">: 它对 ng-select 原生箭头(25×20px 的 <span>)
+ *   做**透明覆盖**, 把触摸目标放大到 44px × 整个控件高, 并改用 pointerdown 直接
+ *   调 NgSelectComponent.toggle() —— 不再依赖"真机把 touchstart/touchend 合成成 click"这一串。
+ *
+ *   ⚠️ 这里**只做定位与放大**, 不要给它任何背景/边框/图标 —— 原生箭头的图形仍在底下
+ *      正常渲染, 视觉必须保持 0 变化。
+ * -------------------------------------------------------------------- */
+.warden-select-open {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 44px; /* 触摸目标下限; 原生的 .ng-arrow-wrapper 只有 25px 宽 */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 2; /* 必须压住 ng-select 容器内的原生箭头 */
+}
+
+@media (max-width: 768px) {
+  /* ------------------------------------------------------------------
+   * R1. 设置页「标题 → 第一段」之间的空白(两步登录 / 设备 等)
+   *
+   *   官方模板统一写成 `<div class="tw-mt-6 tw-mb-2 tw-pb-2.5"><h1>标题</h1></div>`:
+   *   `mb-2`(8px) + `pb-2.5`(10px) = 在标题与紧随其后的说明之间白送 18px。
+   *   实测设备页「您的账户在以下设备上登录过。」这一段的底边到第一条记录整整 34px
+   *   (= p 自己的 mb 16px + 本容器的 pb 10px + mb 8px)。压掉容器的这两项后剩 16px,
+   *   那是标准段间距, 保留。
+   *
+   *   ⚠️ 选择器要求**两个类同时存在**, 所以不会误伤 danger-zone / admin 那几处
+   *      只写 `tw-mt-16 tw-pb-2.5`(没有 tw-mb-2) 的标题。
+   * ------------------------------------------------------------------ */
+  main#main-content .tw-mb-2.tw-pb-2\.5 {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * R2. 密钥页: 「更新加密设置」按钮 与 下面「API 密钥」标题 之间的空白
+   *
+   *   根因是模板里的 `<div class="tw-grid tw-gap-16 tw-mt-6">` —— `tw-gap-16`
+   *   是 **4rem = 64px** 的行间距。实测全仓库**只有这一处**用 tw-gap-16
+   *   (`grep -rn "tw-gap-16" apps/web/src/app --include=*.html` 只命中
+   *    auth/settings/security/security-keys.component.html), 所以可以放心针对。
+   * ------------------------------------------------------------------ */
+  main#main-content .tw-grid.tw-gap-16 {
+    gap: 16px !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * R3. 密码库页搜索框: 去掉"点击后外面那一圈高亮"
+   *
+   *   我们的 CSS 里**没有任何 focus 规则**(grep 过), 那圈高亮来自官方设计系统:
+   *   `.has-[input:focus-visible]:tw-ring-2:has(input:focus-visible)` 在容器上
+   *   按 `--tw-ring-shadow` 画 2px ring。
+   *   实测: 未聚焦时 form 的 `box-shadow` 就是 **none**(边框由 `border: 1px solid` 提供),
+   *   聚焦后才多出 `0 0 0 1px/2px` 的 ring —— 所以把 shadow 变量清零**不会**动到常态外观。
+   *
+   *   ⚠️ 只清 `box-shadow` / `--tw-ring-*`, 千万不要写成 `border: none` ——
+   *      那个 1px 边框是输入框的常态描边, 去掉就没有边界了。
+   * ------------------------------------------------------------------ */
+  main#main-content bit-search form:focus-within,
+  main#main-content bit-search form:has(input:focus-visible) {
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+    box-shadow: none !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * R4. 域名规则: 新增的自定义域名输入框 与「新增自定义域名」按钮 **等高**
+   *
+   *   实测(textarea 逐层量): <textarea> 30px → 父 div **pt/pb = 12px/12px** → 54px
+   *   → 最外壳再 +2px 边框 = **56px**, 而按钮只有 **40px**, 所以看起来"输入框很高"。
+   *   把那一层纵向 padding 压到 4px: 30 + 8 + 2 = **40px** ✅ 与按钮一致。
+   *
+   *   ⚠️ 用 `div:has(> textarea)` 而不是写组件名 —— 域名规则那个组件没有稳定的
+   *      宿主选择器可用, 而"直接包着 textarea 的那层 div"就是 padding 所在层。
+   *      多行 textarea(如 Send 的描述)不受影响: 高度仍由 bitInput 的
+   *      adjustTextareaHeight() 按内容撑开, 这里只是把白边收紧。
+   * ------------------------------------------------------------------ */
+  main#main-content bit-form-field div:has(> textarea) {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * R5. 发送页 / 报告页 右上角那个"产品切换宫格"(点开是 Password Manager 弹窗)
+   *
+   *   I 段本来只在 `app-vault-header` 里藏了它(那一段的注释写着"窄屏上占位置且
+   *   容易误触"), 于是**除密码库页以外的所有页面**都还露着 —— 用户就是在发送页和
+   *   报告页看到并点名要删的。这里把作用域放大到所有页头。
+   *   桌面端保持原样(那是官方给多产品用户准备的入口)。
+   * ------------------------------------------------------------------ */
+  main#main-content app-header header product-switcher {
+    display: none !important;
+  }
+
+  /* ------------------------------------------------------------------
+   * R6. 发送页页头的「新增」按钮 —— 藏掉, 页面中间的才是唯一的
+   *
+   *   `tools-new-send-dropdown` 在 send.component.html 里出现**两次**:
+   *   页头 `<app-header>` 里一个(用户要求去掉的), 列表空态 slot="empty-button" 里
+   *   一个(用户要求保留的)。所以选择器**必须带上 app-header** —— 只写
+   *   `tools-new-send-dropdown` 会把空态那个一起藏掉, 那就一个入口都不剩了。
+   * ------------------------------------------------------------------ */
+  main#main-content app-header tools-new-send-dropdown {
+    display: none !important;
+  }
+}

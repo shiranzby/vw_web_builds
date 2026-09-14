@@ -365,6 +365,35 @@ export class SelectComponent<T> implements ControlValueAccessor {
   }
 
   /**
+   * 自托管定制(第十四批/R 段): 点在右侧箭头覆盖层上 → **直接**开/关面板。
+   *
+   * 为什么用 `pointerdown` 而不是 `click`: 用户报的是真机上"点箭头没反应, 必须先在
+   * 输入框里敲一个字符面板才出来"。真机上 click 要经过
+   * `touchstart → touchend → 浏览器合成 mousedown/mouseup/click` 这一串,
+   * 中间任何一环被吞(软键盘弹起引起滚动、iOS 的手势识别、手指落点偏到输入框上)
+   * 都会让那一次 toggle 落空。`pointerdown` 是浏览器在**按下瞬间**直接派发的指针事件,
+   * 不依赖 click 的合成, 所以更可靠; 桌面端鼠标同样走 pointerdown, 行为一致。
+   *
+   * 两个 `preventDefault/stopPropagation` 都是**必须**的:
+   * · `preventDefault()` —— 阻止后续再合成一次 click; 否则 `pointerdown` 里 toggle 一次、
+   *   合成的 click 又冒到 ng-select 容器上 toggle 一次, "开一次关一次"净效果=没反应。
+   * · `stopPropagation()` —— 同理, 别让这次按下冒泡到 `.ng-select-container` 自己的
+   *   `(click)="toggle()"`。
+   *
+   * ⚠️ 用 ng-select **自己的 `toggle()`**, 不要手写 `if (isOpen) close() else open()`:
+   * `NgSelectComponent.isOpen` 在 v21 是 `ModelSignal<boolean>`(即一个**函数**),
+   * `if (ngSelect.isOpen)` 恒为真 ⇒ 永远只走 close(), 面板永远打不开(第十四批踩过)。
+   */
+  protected togglePanel(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.disabled) {
+      return;
+    }
+    this.select().toggle();
+  }
+
+  /**
    * Prevent Escape key press from propagating to parent components
    * (for example, parent dialog should not close when Escape is pressed in the select)
    *
