@@ -2552,3 +2552,74 @@ html.theme_dark .warden-totp-copied .warden-totp-ring {
 html.theme_dark .warden-totp-copied .warden-totp-digits {
   color: rgb(var(--color-success-600)) !important;
 }
+
+/* ======================================================================
+ * W 段. 移动端第七轮反馈(第十九批) —— 用户验收 V 段后提的两条, 依旧不是 L4 迁入。
+ *
+ *   W1 「要分享的文本」「私密备注」的可见框比「Send 名称」高 24px
+ *   W2 切换行右侧「新增 Send」与左侧切换条: 高度 / 居中 / 字号 三处都不一致
+ *
+ * ⚠️ 两条都只写在 @media (max-width: 768px) 里 ⇒ 桌面端零变化。
+ * ====================================================================== */
+
+/* ----------------------------------------------------------------------
+ * W1. textarea 的"框"比 input 的"框"高 —— 高在外层的**纵向内边距**上。
+ *
+ *   线上 v2026.8.8 实测(390×844, 新增文本 Send):
+ *     · Send 名称:  textarea/input 本体 38 → 外层 38 → 带边框的可见框 **40**;
+ *     · 要分享的文本: 本体 38 → 外层 **62** → 可见框 **64**。
+ *   差的 24px = 外层的上下各 12px, 来自组件自带的 `has-[textarea]:!tw-py-3`
+ *   (在 wrapHTML 里能直接看到这个类)。**输入框本体的高度其实早就统一了(都 38)**,
+ *   V 段那份断言过的正是"本体", 所以 V 段全绿而用户看到的框还是不一样高 ——
+ *   判据取错了对象(量"控件"而不是量"用户看见的框")。
+ *
+ *   🔴 选择器必须收窄到 `:has(tools-send-form)`: 条目编辑对话框也有 `bit-form-field > textarea`
+ *      (多行备注是**故意**让它长高的), 无条件清零会把那些也压成一行。
+ *   只清纵向 —— 横向的 `tw-px-3`(左 12px)是官方值, 保持不动。
+ *
+ *   🔴🔴 这里**必须**用 `div:has(> textarea[bitInput])` 而不是 `div:has(> textarea)`:
+ *      对方那条是 Tailwind 的 `has-[textarea]:!tw-py-3` —— 一个类 (0,1,0) + `!important`;
+ *      而 `… bit-form-field div:has(> textarea)` 里 `:has(> textarea)` 只贡献 (0,0,1),
+ *      全条是 (0,0,5)。**两条都带 !important 时比的是权重, 与书写先后无关**(MEMORY ①)
+ *      ⇒ 类赢, 我这条被压掉, 实测 padding 仍是 12px、框还是 64px。
+ *      把 `[bitInput]` 写进 `:has()` 里, 它的权重变成 (0,1,1) ⇒ 整条 (0,1,5) > (0,1,0) 才生效。
+ *      (已用 CSSOM `insertRule` 逐条试过: 不带属性 = 62px 无效, 带属性 = 38px 生效。)
+ * ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  bit-dialog:has(tools-send-form) bit-form-field div:has(> textarea[bitInput]) {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * W2. 「新增 Send」与左侧切换条对齐。
+ *
+ *   线上 v2026.8.8 实测(390×844):
+ *     切换条 bit-toggle-group  h=42 y=52(可见外框 42)
+ *     其中每个 bit-toggle      h=32 y=57  ← 在 42 里垂直居中
+ *     toggle 的 label          字号 **14px**, 内边距 6px 4px
+ *     新增 Send 宿主            h=42 y=52
+ *     新增 Send 的 button       h=32 y=**52**  ← 顶对齐, 没居中; 字号 **12.5px**
+ *   于是: 高度(32 vs 42)、垂直位置(bottom 84 vs 94)、字号(12.5 vs 14)三处都不一致。
+ *
+ *   改法: 让按钮**撑满**宿主的 42px, 文字 flex 居中, 字号跟 toggle 的 label 对齐(14px)。
+ *   ⚠️ 这条与 V3b 用的是**同一个选择器**, 而 V3b 里写了 `height: 32px !important`。
+ *      两条都带 `!important` 且特异性相同 ⇒ 按**源码顺序**后者胜(本段在 V 段之后)。
+ *      这是刻意的: 每批的改动留在自己的段里, 便于单独回滚; 别去改 V3b 那条。
+ *      `--warden-filters-new-fs` 同时是第 27 组产物断言的判据锚点。
+ * ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  main#main-content tools-send-list > .warden-send-filters > .warden-send-filters-new > button {
+    --warden-filters-new-fs: 14px;
+    height: 100% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    font-size: var(--warden-filters-new-fs) !important;
+    line-height: 20px !important;
+  }
+}
