@@ -266,36 +266,54 @@ export class SelectComponent<T> implements ControlValueAccessor {
     const vv = window.visualViewport;
     const visTop = vv?.offsetTop ?? 0;
     const visH = vv?.height ?? window.innerHeight;
-    const visBottom = visTop + visH;
 
     const r = this.select().element.getBoundingClientRect();
     /* 底栏固定钉在视口底部, 会占掉那一带 —— 可用高度按它扣掉, 面板就落不到底栏上。
        为什么不用 z-index 解决: 见 `tabbarInset()` 的注释。 */
-    const usableBottom = visBottom - this.tabbarInset();
-    const below = usableBottom - r.bottom - GAP - PAD;
-    const above = r.top - visTop - GAP - PAD;
-    const up = above > below;
-    const avail = Math.round(Math.min(Math.max(up ? above : below, MIN), visH - 2 * PAD));
+    const usableBottom = visTop + visH - this.tabbarInset();
+    const spaceBelow = usableBottom - r.bottom - GAP - PAD;
+    const spaceAbove = r.top - visTop - GAP - PAD;
 
-    /* ⚠️ 只用 top, 不用 bottom —— `position: fixed` 的 bottom 参照的是**布局视口**,
+    /* ① 先按"两边里更大的那侧"把 maxHeight 放到最大, 量出面板的**实际高度**。
+       为什么要先写 maxHeight 再量: 选项少时面板高度就是内容高度(277px), 远小于可用空间(367px);
+       而"贴着框"这个位置只能由**实际高度**算出来 —— 用可用空间算会把面板推到屏幕顶端。
+       (T 段之前就是这么算的: `top = r.top - GAP - avail`, 于是 7 个选项的"删除日期"面板
+        被摆到 y=8px, 用户看到的是"选项悬浮在页面顶部、跟自己的输入框没关系"。) */
+    const cap = Math.max(MIN, Math.min(Math.max(spaceBelow, spaceAbove), visH - 2 * PAD));
+    panel.style.maxHeight = `${cap}px`;
+    const items = panel.querySelector<HTMLElement>(".ng-dropdown-panel-items");
+    if (items) {
+      items.style.maxHeight = "";
+    }
+    const measured = panel.getBoundingClientRect().height;
+
+    /* ② 方向: **能放下就向下**(与其它下拉一致, 紧贴框的下沿展开);
+       下方放不下才向上; 两边都放不下时选空间更大的一侧(此时面板内部滚动)。
+       ⚠️ 这条策略是 U 段改的。T 段之前是"哪边空间大就往哪边"，于是"下方 351 / 上方 367"
+       这种 16px 的差距也会让它往上弹 —— 明明下面放得下, 面板却跑到输入框上方老远。 */
+    const up =
+      measured > 0 &&
+      measured > spaceBelow &&
+      (measured > spaceAbove ? spaceAbove > spaceBelow : true);
+
+    const avail = Math.round(Math.max(MIN, Math.min(up ? spaceAbove : spaceBelow, visH - 2 * PAD)));
+    const height = Math.max(MIN, Math.min(measured > 0 ? measured : avail, avail));
+
+    /* ③ 位置: 向下 = 顶边贴框底; 向上 = **底边**贴框顶(所以要用 height 反推 top)。
+       ⚠️ 只用 top, 不用 bottom —— `position: fixed` 的 bottom 参照的是**布局视口**,
        键盘弹起时布局视口不变, 用 bottom 会正好把面板放到键盘后面。 */
-    const top = Math.max(
-      visTop + PAD,
-      Math.min(
-        up ? Math.round(r.top) - GAP - avail : Math.round(r.bottom) + GAP,
-        usableBottom - PAD - avail,
-      ),
-    );
+    const top = up
+      ? Math.max(visTop + PAD, Math.round(r.top) - GAP - height)
+      : Math.min(Math.round(r.bottom) + GAP, usableBottom - PAD - height);
 
     panel.style.position = "fixed";
     panel.style.left = `${Math.round(r.left)}px`;
     panel.style.right = "auto";
     panel.style.width = `${Math.round(r.width)}px`;
-    panel.style.top = `${top}px`;
+    panel.style.top = `${Math.round(top)}px`;
     panel.style.bottom = "auto";
     panel.style.maxHeight = `${avail}px`;
 
-    const items = panel.querySelector<HTMLElement>(".ng-dropdown-panel-items");
     if (items) {
       items.style.maxHeight = `${Math.max(60, avail - 4)}px`;
     }
@@ -437,6 +455,20 @@ export class SelectComponent<T> implements ControlValueAccessor {
    *
    * ⚠️ 只接管"按在控件本体上"的那一下: 面板是 `appendTo="body"`, 点选项时事件根本不
    *    经过这个包装 div, 所以那条 `contains()` 判定是防御性的, 别删。
+   *
+   * ---------------------------------------------------------------------------
+   * 第十七批(U 段) 改动: 展开时机从"**按下**"改成"**松手**"(用户要求:
+   *   "现在都是触摸到了、刚点击到就触发了, 我希望是松手的时候触发")。
+   *
+   * 拆成两个事件, 缺一不可:
+   *   · `pointerdown` —— **只 `preventDefault()`, 不开面板**。取消 pointerdown 会让浏览器
+   *     不再补发兼容 mouse 事件(mousedown/click), 于是 ng-select 自己的
+   *     `handleMousedown()` 不会二次 toggle, `outsideClickEvent="mousedown"` 的
+   *     document 监听也收不到这一下 ⇒ 不会"刚开就被判外部点击关掉"。
+   *   · `pointerup` —— 在这里才 `toggle()`。
+   * 若把 `toggle()` 直接挪到 pointerup 而不在 pointerdown 里 preventDefault,
+   * 兼容 mousedown 会在 pointerup 之后补发并二次 toggle ⇒ 面板"开了立刻又关"。
+   * ---------------------------------------------------------------------------
    */
   protected onFieldPointerdown(event: PointerEvent): void {
     if (!this.narrow() || this.disabled) {
@@ -447,9 +479,34 @@ export class SelectComponent<T> implements ControlValueAccessor {
       return;
     }
 
+    /* 记住这一下是"从控件本体上按下去的": pointerup 时如果指针已经拖到别处,
+       就不该再展开(否则"按住往外拖"也会弹面板)。 */
+    this.pressStartedOnField = true;
+    event.preventDefault();
+  }
+
+  /**
+   * 松手才展开/收起 —— 与 `onFieldPointerdown()` 配对, 判据同上(只窄屏、必须起手在控件上)。
+   */
+  protected onFieldPointerup(event: PointerEvent): void {
+    if (!this.narrow() || this.disabled) {
+      return;
+    }
+    if (!this.pressStartedOnField) {
+      return;
+    }
+    this.pressStartedOnField = false;
+
+    if (!this.select().element.contains(event.target as Node)) {
+      return;
+    }
+
     event.preventDefault();
     this.select().toggle();
   }
+
+  /** 见 `onFieldPointerdown()`: 这一下是否"起手在控件本体上"。 */
+  private pressStartedOnField = false;
 
   /**
    * Prevent Escape key press from propagating to parent components

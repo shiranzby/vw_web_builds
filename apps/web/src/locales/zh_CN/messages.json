@@ -16852,5 +16852,17 @@
         "example": "Login"
       }
     }
+  },
+  "wardenUnlimited": {
+    "message": "不限制",
+    "description": "自托管定制(U 段): 最大访问次数留空时的占位文案。"
+  },
+  "wardenIncrease": {
+    "message": "增加",
+    "description": "自托管定制(U 段): 最大访问次数「+」按钮的无障碍标签。"
+  },
+  "wardenDecrease": {
+    "message": "减少",
+    "description": "自托管定制(U 段): 最大访问次数「−」按钮的无障碍标签。"
   }
 }

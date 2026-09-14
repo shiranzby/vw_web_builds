@@ -32,11 +32,17 @@
 
   <bit-form-field>
     <bit-label>{{ "fileFormat" | i18n }}</bit-label>
-    <select bitInput formControlName="format">
+    <!--
+      第十七批/U 段: 这里原来是**原生** `<select bitInput>`, 手机上点它会弹系统自带的
+      选择器(全屏弹窗), 与站内其它下拉的观感完全不一致。用户要求"和其它部分同样处理,
+      在框下面弹出选项即可"。换成 `bit-select` 后走的就是全站同一套下拉面板
+      (窄屏松手展开、点空白/再点框收起), 见 libs/components/src/select 的 U 段注释。
+    -->
+    <bit-select formControlName="format">
       @for (f of formatOptions$ | async; track f.format) {
-        <option [value]="f.format">{{ f.name }}</option>
+        <bit-option [value]="f.format" [label]="f.name"></bit-option>
       }
-    </select>
+    </bit-select>
   </bit-form-field>
 
   <ng-container *ngIf="format === 'encrypted_json'">

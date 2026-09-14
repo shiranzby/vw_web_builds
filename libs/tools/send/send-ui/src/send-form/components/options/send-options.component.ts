@@ -160,4 +160,41 @@ export class SendOptionsComponent {
       return null;
     };
   }
+
+  /**
+   * 空值时的占位文案(第十七批/U 段, 用户要求"默认 placeholder 不填为不限制")。
+   * 只在字段为空时由浏览器显示, 所以不需要额外判空。
+   */
+  get maxAccessCountPlaceholder(): string {
+    return this.i18nService.t("wardenUnlimited");
+  }
+
+  /**
+   * 最大访问次数步进(第十七批/U 段, 用户要求"最右边可以给个 - + 的按钮")。
+   *
+   * 让 `−` 成为 `+` 的**逆运算**(一个可来回的阶梯):
+   *   … ↔ 3 ↔ 2 ↔ 1 ↔ **空(= 不限制)**
+   * 所以 `1` 再按一次 `−` 会回到"不限制"(空), 而不是卡在 1 —— 用户特别强调
+   * "默认不填为不限制", 卡在 1 的话手机上想恢复默认还得手动清空输入框。
+   * 空值继续按 `−` 仍是空(已经下界了)。
+   *
+   * `maxAccessCount` 这个控件存的是**字符串**(见它的声明), 空值用 `""` 而不是 `null`,
+   * 与 `valueChanges` 里 `value === "" ? null : Number(value)` 的约定保持一致。
+   */
+  stepMaxAccessCount(delta: number): void {
+    const control = this.sendOptionsForm.get("maxAccessCount");
+    const raw = control.value;
+    const current = raw == null || raw === "" ? null : Number.parseInt(raw as string, 10);
+
+    let next: number | null;
+    if (current == null) {
+      next = delta > 0 ? 1 : null;
+    } else {
+      const stepped = current + delta;
+      next = stepped < 1 ? null : stepped;
+    }
+
+    control.setValue(next == null ? "" : next.toString());
+    control.markAsDirty();
+  }
 }

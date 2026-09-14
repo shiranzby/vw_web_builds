@@ -8,7 +8,16 @@
   所以永远收不起来 —— 用户报的"点箭头展开后无法再点箭头关闭"就是这个。
   桌面端保持可搜索(那里没有软键盘, 长列表更需要输入过滤)。
 -->
-<div class="tw-relative tw-w-full" (pointerdown)="onFieldPointerdown($event)">
+<!--
+  ⚠️ 第十七批(U 段): 展开时机 = **松手**(pointerup), 不是按下(pointerdown)。
+  pointerdown 只负责 `preventDefault()`(掐掉兼容 mouse 事件), 见 ts 里
+  `onFieldPointerdown()` / `onFieldPointerup()` 的注释 —— 两者必须成对。
+-->
+<div
+  class="tw-relative tw-w-full"
+  (pointerdown)="onFieldPointerdown($event)"
+  (pointerup)="onFieldPointerup($event)"
+>
   <ng-select
     [ngModel]="selectedOption()"
     (ngModelChange)="onChange($event)"
