@@ -21,6 +21,7 @@ import {
 import { Organization } from "@bitwarden/common/admin-console/models/domain/organization";
 import { FeatureFlag } from "@bitwarden/common/enums/feature-flag.enum";
 import { ConfigService } from "@bitwarden/common/platform/abstractions/config/config.service";
+import { CipherType } from "@bitwarden/common/vault/enums";
 import { CipherAuthorizationService } from "@bitwarden/common/vault/services/cipher-authorization.service";
 import {
   RestrictedCipherType,
@@ -40,6 +41,7 @@ import {
 } from "@bitwarden/vault";
 
 import { GroupView } from "../../../admin-console/organizations/core";
+import { CoachmarkService } from "../coachmark";
 
 import {
   CollectionPermission,
@@ -130,6 +132,48 @@ export class VaultItemsComponent<C extends CipherViewLike> {
   // eslint-disable-next-line @angular-eslint/prefer-signals
   @Input() enforceOrgDataOwnershipPolicy: boolean;
 
+  /*
+   * 自托管定制(第十批/N 段). 窄屏下把页头那颗「新增」菜单并进本组件的「名称」表头行
+   * (见模板里的 .warden-headbar), 省掉页头独占的一行高度。
+   *
+   * 这几个权限位/事件都**不在这里重算**, 而是由 vault.component.html 用模板引用变量
+   * 从 app-vault-header 上直接透传(那几个 getter 在页头组件上是 public)。这样两处
+   * 「能否新建 / 是否被停用」永远是同一个来源, 不会出现两套判断对不上的情况。
+   */
+  // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
+  // eslint-disable-next-line @angular-eslint/prefer-signals
+  @Input() canCreateCipher = false;
+  // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
+  // eslint-disable-next-line @angular-eslint/prefer-signals
+  @Input() canCreateFolder = false;
+  // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
+  // eslint-disable-next-line @angular-eslint/prefer-signals
+  @Input() canCreateCollection = false;
+  // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
+  // eslint-disable-next-line @angular-eslint/prefer-signals
+  @Input() canCreateSshKey = false;
+  /** 组织被停用时置灰菜单 —— 对应页头的 [disabled]="isOrganizationSuspended" */
+  // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
+  // eslint-disable-next-line @angular-eslint/prefer-signals
+  @Input() newCipherMenuDisabled = false;
+  /** 垃圾篓(trash)里没有「新增」—— 与页头 @if (filter.type !== "trash") 同口径 */
+  // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
+  // eslint-disable-next-line @angular-eslint/prefer-signals
+  @Input() showNewCipherMenu = false;
+
+  // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
+  // eslint-disable-next-line @angular-eslint/prefer-output-emitter-ref
+  @Output() cipherAdded = new EventEmitter<CipherType>();
+  // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
+  // eslint-disable-next-line @angular-eslint/prefer-output-emitter-ref
+  @Output() folderAdded = new EventEmitter<void>();
+  // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
+  // eslint-disable-next-line @angular-eslint/prefer-output-emitter-ref
+  @Output() collectionAdded = new EventEmitter<void>();
+  // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
+  // eslint-disable-next-line @angular-eslint/prefer-output-emitter-ref
+  @Output() openAddItemDialog = new EventEmitter<void>();
+
   private _ciphers?: C[] = [];
   // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
   // eslint-disable-next-line @angular-eslint/prefer-signals
@@ -193,6 +237,37 @@ export class VaultItemsComponent<C extends CipherViewLike> {
       this.selection.clear();
     }
   }
+
+  protected readonly coachmarkService = inject(CoachmarkService);
+
+  /**
+   * 自托管定制(第十批/N 段): 窄屏判定。断点与 vaultwarden.css 的 @media (max-width: 768px) 一致。
+   *
+   * 窄屏下「新增」从页头搬进本组件的「名称」表头行, 页头那颗由 CSS 藏掉。而 coachmark
+   * 的 addItem 步骤是**锚在按钮上**的([bitPopoverAnchorFor]) —— 若两处都挂锚点, 会同时
+   * 弹出两个 coachmark, 其中锚到 display:none 按钮的那个会拿到全零 rect、掉到视口左上角。
+   * 所以让"当前可见的那颗"挂锚点, 这个 getter 就是那个开关(页头那边是它的取反)。
+   *
+   * 为什么读 window.innerWidth 就够、不引入响应式断点服务: 这个判定只在弹层"要开"时
+   * 需要正确, 而弹层由 activeStepId 信号驱动开合 —— 信号一变必然跟一次变更检测, 这次
+   * 变更检测就会重新求值本 getter。且真机上视口本来就不会变。
+   */
+  protected get isNarrowViewport(): boolean {
+    return window.innerWidth <= 768;
+  }
+
+  /**
+   * 窄屏「新增」的 coachmark 弹层开关。弹层本体是模板里的 #addItemCoachmark
+   * (与页头那边同构: 同一个 @if 块内声明 + 引用), 所以这里只需要开合条件。
+   */
+  protected get addItemCoachmarkOpen(): boolean {
+    return (
+      this.showNewCipherMenu &&
+      this.isNarrowViewport &&
+      this.coachmarkService.activeStepId() === "addItem"
+    );
+  }
+
   protected canDeleteSelected$: Observable<boolean>;
   protected canRestoreSelected$: Observable<boolean>;
   protected disableMenu$: Observable<boolean>;

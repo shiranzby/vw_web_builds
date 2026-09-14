@@ -292,6 +292,21 @@ export class VaultHeaderComponent {
     return !!activeOrganization && !activeOrganization.enabled;
   }
 
+  /**
+   * 自托管定制(第十批/N 段): 窄屏判定, 断点与 vaultwarden.css 的 @media (max-width: 768px) 一致。
+   *
+   * 窄屏下页头这颗「新增」整块被 CSS 藏掉(它已经并进列表的「名称/选择」行, 见
+   * vault-items.component.html)。这里让 coachmark 的锚点同时让给那边 —— 锚到
+   * display:none 的按钮会拿到全零 rect, 弹出层会掉到视口左上角。
+   *
+   * 为什么读 window.innerWidth 就够: 这个值只在弹层"要开"时被求值, 而弹层由
+   * CoachmarkService.activeStepId 信号驱动 —— 信号一变必然跟一次变更检测,
+   * 本 getter 就会被重新求值(本组件是 OnPush, 但信号变更会 mark 它).
+   */
+  protected get isNarrowViewport(): boolean {
+    return window.innerWidth <= 768;
+  }
+
   deleteCollection() {
     this.onDeleteCollection.emit();
   }

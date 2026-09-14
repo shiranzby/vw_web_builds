@@ -12,6 +12,7 @@ import {
 } from "@bitwarden/components";
 import {
   CopyCipherFieldDirective,
+  NewCipherMenuComponent,
   VaultItemCopyActionsComponent,
   Vfo1I18nPipe,
   Vfo1IconPipe,
@@ -22,6 +23,7 @@ import { GroupBadgeModule } from "../../../admin-console/organizations/collectio
 import { SharedModule } from "../../../shared/shared.module";
 import { OrganizationBadgeModule } from "../../individual-vault/organization-badge/organization-badge.module";
 import { PipesModule } from "../../individual-vault/pipes/pipes.module";
+import { CoachmarkComponent } from "../coachmark";
 
 import { VaultTotpBadgeComponent } from "./totp-badge.component";
 import { VaultCipherRowComponent } from "./vault-cipher-row.component";
@@ -47,6 +49,9 @@ import { VaultItemsComponent } from "./vault-items.component";
     IconModule,
     Vfo1I18nPipe,
     Vfo1IconPipe,
+    // 自托管定制(第十批/N 段): 窄屏「新增」菜单 + 它的 coachmark 弹层(见 vault-items.component.html)
+    NewCipherMenuComponent,
+    CoachmarkComponent,
     // standalone, 不参与本模块的 declarations —— 见 totp-badge.component.ts 头部注释
     VaultTotpBadgeComponent,
   ],

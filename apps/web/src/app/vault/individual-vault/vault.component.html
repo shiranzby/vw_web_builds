@@ -2,6 +2,7 @@
 <app-vault-banners [organizations]="organizations$ | async"></app-vault-banners>
 
 <app-vault-header
+  #vaultHeader
   [filter]="filter"
   [loading]="refreshing && !performingInitialLoad"
   [organizations]="allOrganizations"
@@ -47,6 +48,11 @@
       </bit-callout>
     }
 
+    <!--
+      自托管定制(第十批/N 段): 末 6 个绑定是窄屏「新增」用的 —— 直接从上面那个 app-vault-header
+      实例上取权限位(那几个 getter 是 public), 保证与页头同一份判断, 不在这里重算。
+      [showNewCipherMenu] 与页头 @if (filter.type !== "trash") 同口径。
+    -->
     <app-vault-items
       #vaultItems
       [ciphers]="ciphers"
@@ -66,6 +72,16 @@
       [userCanArchive]="userCanArchive$ | async"
       [enforceOrgDataOwnershipPolicy]="enforceOrgDataOwnershipPolicy$ | async"
       (onEvent)="onVaultItemsEvent($event)"
+      [canCreateCipher]="vaultHeader.canCreateCipher"
+      [canCreateFolder]="true"
+      [canCreateCollection]="vaultHeader.canCreateCollections"
+      [canCreateSshKey]="true"
+      [newCipherMenuDisabled]="vaultHeader.isOrganizationSuspended"
+      [showNewCipherMenu]="filter.type !== 'trash'"
+      (cipherAdded)="addCipher($event)"
+      (folderAdded)="addFolder()"
+      (collectionAdded)="addCollection()"
+      (openAddItemDialog)="openAddItemDialog()"
     >
     </app-vault-items>
     @if (performingInitialLoad) {

@@ -76,15 +76,20 @@
   </ng-container>
 
   @if (filter.type !== "trash") {
-    <div class="tw-shrink-0">
+    <!--
+      .warden-head-new 是自托管定制(第十批/N 段)的标记: 窄屏下这一整块被 CSS 藏掉, 因为
+      「新增」已经并进列表的「名称/选择」行(vault-items.component.html 的 .warden-headbar)。
+      coachmark 的锚点同时让给那边 —— 锚到 display:none 的按钮会拿到全零 rect。
+    -->
+    <div class="tw-shrink-0 warden-head-new">
       <vault-new-cipher-menu
         [canCreateCipher]="canCreateCipher"
         [canCreateFolder]="true"
         [canCreateSshKey]="true"
         [canCreateCollection]="canCreateCollections"
         [disabled]="isOrganizationSuspended"
-        [coachmarkPopover]="addItemCoachmark.popover()"
-        [coachmarkPopoverOpen]="addItemCoachmarkOpen()"
+        [coachmarkPopover]="isNarrowViewport ? undefined : addItemCoachmark.popover()"
+        [coachmarkPopoverOpen]="!isNarrowViewport && addItemCoachmarkOpen()"
         [coachmarkPosition]="coachmarkService.getStepPosition('addItem')"
         (cipherAdded)="addCipher($event)"
         (folderAdded)="addFolder()"

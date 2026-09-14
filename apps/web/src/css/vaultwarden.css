@@ -494,6 +494,69 @@ bit-nav-logo bit-nav-item .bwi-shield {
 }
 
 /* ======================================================================
+ * 第十批 / N 段. 窄屏省高度: 「新增」并入列表的「名称/选择」行
+ *              + 去掉多余的「筛选」标题行
+ *
+ *    这一批**不是 L4 迁入的**(custom.js/custom.css 里没有对应实现), 是上线后按用户
+ *    反馈新增的: 窄屏下有两行"只占高度、不承载信息"——
+ *      · 页头那一行在窄屏只剩一颗「新增」(左侧标题/面包屑、产品切换宫格都已被 I 段藏掉);
+ *      · 筛选面板顶部的「筛选」标题行只重复了下面开关上的同一句话。
+ *
+ *    · 页头那一行在窄屏只剩一颗「新增」(左侧标题/面包屑、产品切换宫格都已被 I 段藏掉);
+ *    · 筛选面板顶部的「筛选」标题行只重复了下面开关上的同一句话。
+ *
+ *    「新增」不能靠 CSS 搬 —— 它在 DOM 里的位置由模板决定。所以改成:
+ *      · 列表侧 vault-items.component.html 渲染第二个 vault-new-cipher-menu
+ *        (权限位/事件由 vault.component.html 用模板引用变量从 app-vault-header 透传,
+ *         不重算, 免得两处"能否新建"对不上);
+ *      · 页头那一颗整块藏掉(见下面的 .warden-head-new), 否则出现两个入口。
+ *    ⚠️ 两者是**成对**的: 藏了页头那颗却不在列表里渲染, 窄屏就彻底没有「新增」入口。
+ *      这与 J7/A 段"桌面端不能只把胶囊隐藏掉"是同一类约束。
+ *
+ *    ⚠️ 「筛选」标题行只藏这一行: 面板里的 bit-search(搜索密码库)与 .warden-filter-toggle
+ *       (筛选开关)必须保留 —— 窄屏上它们才是筛选的唯一入口。这里用官方模板里的
+ *       data-testid="filters-header" 定位, 不依赖中文文案, 换语言也稳。
+ *
+ *    桌面端零变化: 整套规则都在 @media 里; 宽屏下 .warden-head-new 正常显示,
+ *    .warden-headbar 整条本来就不渲染(见 J7/A 段)。
+ * ====================================================================== */
+@media (max-width: 768px) {
+  /* 页头那颗「新增」: 已经搬进列表行, 留着会变成两个入口。
+     ⚠️ 必须用后代选择器: 「新增」上面还套着三层 flex 包装
+        (header > div.tw-flex > div.tw-ml-auto > div.tw-flex.tw-min-w-max > .warden-head-new),
+        写成 `header > .warden-head-new` 一条都命中不到 —— 实测过, 结果是窄屏下
+        页头那颗照旧显示、列表里又多一颗(重复入口), 而页头那 56px 也没省下来。 */
+  main#main-content app-vault-header app-header header .warden-head-new {
+    display: none !important;
+  }
+
+  /* 搬进来的那颗: 与旁边「选择」胶囊同高(28px)、同样压成胶囊。
+     用两个官方的 id 定位按钮(菜单根据特性开关在 #newItemButton / #newItemDropdown
+     之间二选一), 而不是 .warden-headbar 下所有 button —— 免得连 <bit-menu> 的
+     菜单项一起被压。 */
+  .warden-headbar vault-new-cipher-menu,
+  .warden-headbar vault-new-cipher-menu > div {
+    display: inline-flex;
+    align-items: center;
+  }
+  .warden-headbar #newItemButton,
+  .warden-headbar #newItemDropdown {
+    box-sizing: border-box !important;
+    height: 28px !important;
+    min-height: 0 !important;
+    padding: 0 12px !important;
+    border-radius: 999px !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+  }
+
+  /* 筛选面板顶部的「筛选」标题行(含右侧问号链接)整行去掉 */
+  main#main-content app-vault-filter [data-testid="filters-header"] {
+    display: none !important;
+  }
+}
+
+/* ======================================================================
  * K. 窄屏: 对话框压缩(新增/编辑条目、Send 撰写)
  *    H 段的规则全部限定在 main#main-content 里, 而对话框挂在内层 grid 的
  *    "浮层列"上, 一条都没命中 —— 于是"新增登录"的内容一路排到 1000px 以上,
