@@ -1572,10 +1572,15 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
     flex: 0 0 auto !important;
     margin-bottom: 0 !important;
   }
-  /* 按钮模板上带的是 bitButton 的 block(整宽), 这里收回成内联尺寸 */
+  /* 按钮模板上带的是 bitButton 的 block(整宽), 这里收回成内联尺寸。
+     ⚠️ 纵向内边距**不能清零**: bitButton 的 default 尺寸靠 pt/pb(=0.625rem-1px=9px) + 上下各 1px
+     边框 + 20px 行高 撑成 40px, 正好等于搜索框的 tw-min-h-10(40px)。原来写成简写 `padding: 0 12px`
+     会把纵向一起清成 0 ⇒ 按钮塌到 22px, 与同行的搜索框差 18px —— 就是用户报的"高度不统一"(2026-09-14 修)。
+     所以这里只覆盖**横向**, 纵向留给 bitButton 自己, 上游改尺寸时也能跟着走。 */
   main#main-content app-vault-filter [data-testid="filters-body"] > .warden-filter-toggle button {
     width: auto !important;
-    padding: 0 12px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
     white-space: nowrap !important;
   }
   /* 筛选区块(0~11 个)独占整行, 展开时排在搜索行下面 */
