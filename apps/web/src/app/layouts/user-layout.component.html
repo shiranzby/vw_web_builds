@@ -3,8 +3,19 @@
     <bit-nav-logo [openIcon]="logo" route="." [label]="'passwordManager' | i18n"></bit-nav-logo>
 
     <bit-nav-item icon="bwi-vault" [text]="'vaults' | i18n" route="vault"></bit-nav-item>
+    <!--
+      第二十二批(Z 段): 设计稿的一级导航是**六项** —— 密码库 · 验证码 · 发送 · 工具 · 报告 · 设置。
+      上游导航里没有「验证码」(它只是 /totp 一个页面, 窄屏一直挂在底部标签栏的第 2 项)。
+      这里补成正式的导航项, 桌面端才与设计稿一致。
+
+      文案用中文字面量, 与 mobile-tab-bar 同口径(那里也是这样做的, 理由见它的注释:
+      上游 zh_CN 里只有 `verificationCodeTotp` =「验证码 (TOTP)」, 放进导航太长)。
+    -->
+    <bit-nav-item icon="bwi-clock" text="验证码" route="totp"></bit-nav-item>
     @if (sendEnabled$ | async) {
-      <bit-nav-item icon="bwi-send" [text]="'send' | i18n" route="sends"></bit-nav-item>
+      <!-- 第二十二批(Z 段): 上游 zh_CN 根本没翻译 `send`(渲染出来就是英文 "Send"),
+           而设计稿与底部标签栏用的都是「发送」。这里改成中文字面量对齐。 -->
+      <bit-nav-item icon="bwi-send" text="发送" route="sends"></bit-nav-item>
     }
     <bit-nav-group
       icon="bwi-wrench"

@@ -2831,3 +2831,83 @@ body.wd .card .gen-out {
   padding: 14px 16px;
   border-radius: var(--radius-md);
 }
+
+/* ======================================================================
+ * Z2. 外壳：左侧完整导航 → 68px 图标栏（第二十二批 / 第二批）
+ *
+ *   设计稿的 `.rail` 是「图标在上 + 10.5px 标签在下」的 68px 竖条，共 6 项
+ *   （密码库 · 验证码 · 发送 · 工具 · 报告 · 设置）。
+ *
+ *   ⚠️ 只写 `min-width: 769px`：窄屏一级导航是底部标签栏（G 段），**不能碰**。
+ *
+ *   实现要点：
+ *   · 布局列是 Bitwarden 用**行内** `grid-template-columns` 写死的（实测 `288px 992px 0px`）
+ *     ⇒ 必须 `!important` 覆盖，且选择器要能唯一定位到那个 grid —— 用
+ *       `div.tw-grid:has(> app-side-nav)`（`app-side-nav` 是它的直接子元素）。
+ *   · 每项容器 `[data-testid="nav-item-container"]` 上也有**行内** `padding-inline-start: 2.25rem`
+ *     （留给组的小三角），同样要 `!important` 清掉。
+ *   · Bitwarden 自己也有"侧栏收起"状态（`SIDERAIL_WIDTH_REM = 4` = 64px、图标条）。
+ *     这里不依赖它：导轨观感由本段直接钉死，侧面把组的小三角藏掉，避免出现两套收起逻辑。
+ * ====================================================================== */
+@media (min-width: 769px) {
+  /* ① 布局列：288 → 68 */
+  app-layout div.tw-grid:has(> app-side-nav) {
+    grid-template-columns: var(--rail-w) minmax(0, 1fr) 0px !important;
+  }
+  app-side-nav,
+  app-side-nav #bit-side-nav {
+    width: var(--rail-w) !important;
+    min-width: var(--rail-w) !important;
+  }
+  app-side-nav #bit-side-nav--scroll {
+    padding-inline: 6px !important;
+  }
+
+  /* ② 每一项：去掉左右内边距，图标在上、标签在下 */
+  app-side-nav bit-nav-item > div,
+  app-side-nav bit-nav-group > bit-nav-item > div {
+    padding-inline: 0 !important;
+  }
+  app-side-nav [data-testid="nav-item-container"] {
+    padding-inline-start: 0 !important;
+    height: var(--row-h) !important;
+    border-radius: var(--radius-md) !important;
+  }
+  /* ⚠️🔴 这一层的高度**必须写死**，不能交给内容撑开:
+     `a` 与它内层那个 div 都带 `tw-size-full` / `tw-h-full`(height:100%)。
+     容器一旦改成 `height:auto`，百分比对 auto 求值就是 0 ⇒ 整条链路塌成 0，
+     **整列导航凭空消失**(实测 5 个条目全是 y=97 h=0，元素 rect 全 0)。
+     原版之所以看着正常, 是因为容器自带 `tw-h-10`(40px) 在撑着。
+     这里用设计稿的行高 `--row-h`(52px) 显式给高度, 内层继续走 100%。 */
+  app-side-nav a[data-testid="nav-item-interactive"] > div {
+    height: 100% !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 3px !important;
+    padding: 7px 2px !important;
+    font-weight: 500 !important;
+  }
+  app-side-nav a[data-testid="nav-item-interactive"] span.tw-truncate {
+    font-size: 10.5px !important;
+    line-height: 1.15 !important;
+    max-width: 100% !important;
+  }
+  app-side-nav a[data-testid="nav-item-interactive"] bit-icon {
+    font-size: 18px !important;
+  }
+  /* 右侧那个按钮槽在导轨里会挤掉宽度 */
+  app-side-nav [data-testid="nav-item-container"] > div:last-child {
+    display: none !important;
+  }
+  /* 组的小三角：导轨里不需要（它换来的是"两个收起逻辑"，见文件头说明） */
+  app-side-nav [data-testid="nav-group-collapse-arrow"] {
+    display: none !important;
+  }
+
+  /* ③ 品牌标记：收成一枚居中图标 */
+  app-side-nav bit-nav-logo {
+    padding-inline: 0 !important;
+    justify-content: center !important;
+  }
+}
