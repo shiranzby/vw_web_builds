@@ -180,6 +180,10 @@ module.exports.buildConfig = function buildConfig(params) {
         // 默认**不**复制 src/css 目录，所以必须在这里显式列出，否则产物里没有该文件、
         // 那个 <link> 会 404。上游 vw_web_builds 只加了 <link>，文件一直靠部署者自己放。
         { from: path.resolve(__dirname, "src/css/vaultwarden.css"), to: "css/vaultwarden.css" },
+        // 第二十二批(Z 段): Shypwd 设计系统(Apple 风格)。来源是 Open Design 交付的
+        //   pages/_shared/app.css, 生成脚本给组件选择器加了 `body.wd` 作用域(见文件头注释)。
+        //   index.html 里排在 css/vaultwarden.css **之前** —— 我们二十一批的移动端定制仍然优先。
+        { from: path.resolve(__dirname, "src/css/warden-design.css"), to: "css/warden-design.css" },
         {
           from: path.resolve(__dirname, "../../node_modules/qrious/dist/qrious.min.js"),
           to: "scripts",

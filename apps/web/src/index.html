@@ -13,7 +13,14 @@
     <link rel="mask-icon" href="images/icons/safari-pinned-tab.svg" color="#175DDC" />
     <link rel="manifest" href="manifest.json" />
   </head>
-  <body class="layout_frontend">
+  <!-- 第二十二批(Z 段): `wd` 是 Shypwd 设计系统的作用域类。
+       设计系统里有 .card/.btn/.input/.chip/.tag/.menu/.stat 这些通用类名,
+       全部挂在 body.wd 下才不会和 Bitwarden 自己的类名撞车。 -->
+  <body class="layout_frontend wd">
+    <!-- 设计系统先加载, 二十一批定制(vaultwarden.css)后加载 ⇒ 移动端定制优先。
+         两份都是 copy-webpack-plugin 原样拷贝, 见 webpack.base.js 的 patterns。 -->
+    <!-- webpackIgnore: true -->
+    <link rel="stylesheet" href="css/warden-design.css" />
     <!-- webpackIgnore: true -->
     <link rel="stylesheet" href="css/vaultwarden.css" />
     <app-root>

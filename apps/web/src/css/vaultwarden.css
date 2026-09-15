@@ -2707,3 +2707,127 @@ body.warden-avatar-on main#main-content app-header bit-avatar svg {
 body.warden-avatar-on main#main-content app-header bit-avatar svg text {
   display: none !important;
 }
+
+/* ======================================================================
+ * Z 段. 引入 Shypwd 设计系统(Apple 风格) —— 第二十二批
+ *
+ *   设计系统本体在 `css/warden-design.css`（由 Open Design 交付的 `pages/_shared/app.css`
+ *   生成，组件选择器统一加了 `body.wd` 作用域）。本段是**桥接层**，做三件事：
+ *
+ *   ① 把设计系统的**暗色 token** 挂到 `html.theme_dark` 上。
+ *      设计系统原本用 `:root[data-scheme="dark"]`，而应用的主题开关是把 `theme_dark`
+ *      挂在 `<html>` 上 —— 不桥接的话，深色模式下 `body{background:var(--bg)}` 会
+ *      让整页变成**白底**（token 仍是浅色那套）。
+ *   ② 让应用自己的 282 个 `--color-*` 变量**跟随设计系统 token**。
+ *      这样 21 批定制里那些我们没碰过的 Bitwarden 组件（表格、按钮、对话框…）也一起换色，
+ *      不用逐个改模板。变量是三进制 RGB（`rgb(var(--color-x))` 那种用法）。
+ *   ③ 落实卡片规范：设计系统里 8 个"像卡片"的类原本是 3 套内边距 × 3 种圆角，
+ *      统一成 A 档（主卡片）/ B 档（内嵌块）两档，详见 warden-worker/docs/mockups/card-spec.html。
+ *
+ *   ⚠️ 本段在 warden-design.css **之后**加载 ⇒ 这里的声明优先于设计系统本体。
+ *   ⚠️ 二十一批的移动端定制在本段之前，仍然生效，不受影响。
+ * ====================================================================== */
+
+/* ---------- ① 设计系统的暗色 token（翻译自 :root[data-scheme="dark"]）---------- */
+html.theme_dark {
+  --bg: #000000;
+  --surface: #1d1d1f;
+  --surface-warm: #272729;
+  --fg: #f5f5f7;
+  --fg-2: #d2d2d7;
+  --muted: #86868b;
+  --meta: #86868b;
+  --border: #424245;
+  --border-soft: #2a2a2c;
+  --accent: #2997ff;
+  --accent-on: #000000;
+  --scrim: color-mix(in oklab, var(--fg) 14%, transparent);
+  --elev-raised: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- ② 应用变量 ← 设计系统 token ---------- */
+:root,
+html.theme_light {
+  --color-background: 255 255 255;
+  --color-background-alt: 245 245 247;
+  --color-background-alt2: 251 251 253;
+  --color-background-alt3: 245 245 247;
+  --color-background-alt4: 232 232 237;
+  --color-primary-100: 230 241 253;
+  --color-primary-300: 128 184 245;
+  --color-primary-600: 0 113 227;
+  --color-text-main: 29 29 31;
+  --color-text-secondary: 66 66 69;
+  --color-text-muted: 110 110 115;
+  --color-text-alt2: 134 134 139;
+  --color-success-100: 226 246 233;
+  --color-success-600: 22 163 74;
+  --color-danger-100: 253 232 232;
+  --color-danger-600: 220 38 38;
+}
+html.theme_dark {
+  --color-background: 0 0 0;
+  --color-background-alt: 29 29 31;
+  --color-background-alt2: 39 39 41;
+  --color-background-alt3: 29 29 31;
+  --color-background-alt4: 66 66 69;
+  --color-primary-100: 9 34 58;
+  --color-primary-300: 41 151 255;
+  --color-primary-600: 41 151 255;
+  --color-text-main: 245 245 247;
+  --color-text-secondary: 210 210 215;
+  --color-text-muted: 134 134 139;
+  --color-text-alt2: 134 134 139;
+  --color-success-100: 22 46 30;
+  --color-success-600: 52 199 89;
+  --color-danger-100: 46 22 22;
+  --color-danger-600: 255 92 92;
+}
+
+/* ---------- ③ 卡片规范统一（设计系统那 8 个类收敛成两档）----------
+   A 档 · 主卡片：内边距与圆角只认这一组值 */
+body.wd .card,
+body.wd .report-card,
+body.wd .panel,
+body.wd .login-card,
+body.wd .lock-card {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+/* B 档 · 内嵌块：四个类之间必须一致（原先是 12/14/16 三种内边距混着用） */
+body.wd .notes,
+body.wd .stat,
+body.wd .gen-out,
+body.wd .opt-card {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+/* B′ · 拖放区：虚线边框是语义，保留；尺寸归到 B 档的大变体 */
+body.wd .dropzone {
+  padding: 22px 18px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+/* N · 行内提示条：不是卡片，但把取值固定下来（原先是第三档圆角） */
+body.wd .banner {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+/* 危险语义只换边框色，不再另起一套尺寸 */
+body.wd .danger-card {
+  border-color: color-mix(in oklab, var(--danger) 42%, var(--border));
+}
+/* 卡片里再套卡片：保持"层级递减"，不要继承主卡片的内边距 */
+body.wd .card .card,
+body.wd .card .notes,
+body.wd .card .stat,
+body.wd .card .gen-out {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+}
