@@ -2911,3 +2911,93 @@ body.wd .card .gen-out {
     justify-content: center !important;
   }
 }
+
+/* ======================================================================
+ * Z3. 密码库页：筛选列 + 表格（第二十二批 / 第三批）
+ *
+ *   设计稿这一页是「筛选列 + 列表」，列表行高 `--row-h`(52px)、表头是 12px 大写灰色小标签、
+ *   行间用 `--border-soft` 一根发丝线；我们现在的行高是 **78px**（`tw-h-[76.5px]` 写在每个
+ *   `td` 上），整体松垮且和设计系统其它列表不一致。
+ *
+ *   ⚠️ 只改"看得见的外观"（行高/内边距/边框/悬浮与选中态/表头排版），
+ *      **不动任何交互**（选择框、行菜单、TOTP 徽章的行为都不碰）。
+ *   ⚠️ 作用域钉在 `app-vault-items` 上 —— 设置页的设备表、组织成员表另有自己的列宽，
+ *      不能被这套行高连坐。
+ * ====================================================================== */
+
+/* ---------- 表头：12px 大写小标签 ---------- */
+main#main-content app-vault-items table thead th {
+  padding: 8px 12px !important;
+  font-size: var(--fs-meta) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted) !important;
+  background: transparent !important;
+  border-bottom: 1px solid var(--border) !important;
+  white-space: nowrap;
+}
+
+/* ---------- 行高与内边距：78 → --row-h(52) ---------- */
+main#main-content app-vault-items table tbody td {
+  height: var(--row-h) !important;
+  padding: 4px 12px !important;
+  border-bottom: 1px solid var(--border-soft) !important;
+  vertical-align: middle !important;
+}
+/* 第一列（选择框）与末列（⋯）不需要那么宽的内边距 */
+main#main-content app-vault-items table tbody td:first-child,
+main#main-content app-vault-items table tbody td:last-child {
+  padding-inline: 8px !important;
+}
+
+/* 表格行高是"最小高度"，单元格里的文字行/按钮随时能把它顶高(实测桌面 54.5 / 移动 55.5)。
+   这里把行高也钉一遍，并把单元格的行高收到 1.2 —— 内容自己不再往上顶，
+   行高才真的落在 --row-h 上。 */
+main#main-content app-vault-items table tbody tr {
+  height: var(--row-h) !important;
+}
+main#main-content app-vault-items table tbody td {
+  line-height: 1.2 !important;
+}
+
+/* ---------- 行状态：悬浮 / 选中 / 当前 ---------- */
+main#main-content app-vault-items table tbody tr {
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+main#main-content app-vault-items table tbody tr:hover {
+  background: var(--surface) !important;
+}
+main#main-content app-vault-items table tbody tr.is-selected,
+main#main-content app-vault-items table tbody tr.is-active {
+  background: var(--accent-soft) !important;
+}
+
+/* ---------- 名称列的图标磁贴：按设计稿"透明底、直接显示品牌图标" ---------- */
+main#main-content app-vault-items table tbody td bit-icon,
+main#main-content app-vault-items table tbody td .bwi {
+  color: var(--fg-2);
+}
+
+/* ---------- 筛选列：从"带边框的圆角盒子"改成设计系统的朴素面板 ---------- */
+main#main-content app-vault-filter > div[data-testid="filters"] {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+/* 面板标题：从大写灰底条 → 12px 灰色小标签 */
+main#main-content app-vault-filter [data-testid="filters-header"] {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 8px 8px !important;
+  font-size: var(--fs-meta) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted) !important;
+}
+/* 条目行：52px 内的紧凑行，悬浮/选中沿用设计系统 */
+main#main-content app-vault-filter a,
+main#main-content app-vault-filter button {
+  border-radius: var(--radius-sm) !important;
+}
