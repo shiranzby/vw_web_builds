@@ -499,7 +499,7 @@ export class SelectComponent<T> implements ControlValueAccessor {
    * ---------------------------------------------------------------------------
    */
   protected onFieldPointerdown(event: PointerEvent): void {
-    if (!this.narrow() || this.disabled) {
+    if (this.disabled) {
       return;
     }
 
@@ -510,22 +510,65 @@ export class SelectComponent<T> implements ControlValueAccessor {
     /* 记住这一下是"从控件本体上按下去的": pointerup 时如果指针已经拖到别处,
        就不该再展开(否则"按住往外拖"也会弹面板)。 */
     this.pressStartedOnField = true;
-    event.preventDefault();
+    /* 第二十一批(Y 段): 还要记住"按下时面板是不是已经开着" —— 宽屏靠它区分
+       "点一下打开"和"开着时再点一下要关掉"。 */
+    this.pressStartedWhileOpen = this.select().isOpen();
+
+    /* 只有窄屏才掐掉兼容 mouse 事件: 那里输入框是 readOnly, 不需要焦点与选区。
+       宽屏**必须**让它照常派发 mousedown/click, 否则输入框落不了光标、选不了文本
+       (那正是 T 段当初把这段代码限定在窄屏的原因)。 */
+    if (this.narrow()) {
+      event.preventDefault();
+    }
   }
 
   /**
-   * 松手才展开/收起 —— 与 `onFieldPointerdown()` 配对, 判据同上(只窄屏、必须起手在控件上)。
+   * 松手才展开/收起 —— 与 `onFieldPointerdown()` 配对。
+   *
+   * · 窄屏: 起手在控件上就 `toggle()`(输入框 readOnly, 掐掉鼠标事件无副作用)。
+   * · 宽屏: **只补一半** —— 见下面 Y 段的说明。
    */
   protected onFieldPointerup(event: PointerEvent): void {
-    if (!this.narrow() || this.disabled) {
-      return;
-    }
-    if (!this.pressStartedOnField) {
+    if (this.disabled || !this.pressStartedOnField) {
       return;
     }
     this.pressStartedOnField = false;
+    const wasOpenWhenPressed = this.pressStartedWhileOpen;
+    this.pressStartedWhileOpen = false;
 
-    if (!this.select().element.contains(event.target as Node)) {
+    const inside = this.select().element.contains(event.target as Node);
+
+    if (!this.narrow()) {
+      /* ------------------------------------------------------------------
+       * 第二十一批(Y 段) 宽屏: 补上"开着时再点一下关掉"。
+       *
+       *   用户报的"点开了以后没办法再点一下或者点空白处关掉"里, **"点空白处"其实一直是好的**
+       *   (document 上那个 `outsideClickEvent="mousedown"` 的捕获监听会关掉它, 实测:
+       *    点对话框内空白 / 点遮罩 / 点箭头 三条路径都能关)。
+       *   真正关不掉的只有"**再点一次控件本体**", 而且这是 ng-select 的设计:
+       *   `handleMousedown()` 是 `if (searchable()) { open() } else { toggle() }`,
+       *   宽屏我们把 `searchable` 留成 true(长列表需要输入过滤) ⇒ 永远只 `open()`,
+       *   对已经开着的面板是个 no-op ⇒ 点了像没反应。
+       *
+       *   所以这里只补"关"的那一半, **不动"开"的那一半**(开还是交给原生, 免得两边打架)。
+       *   ⚠️ 只在"**按下时就已经开着**"时才关: 否则"点一下打开"会被我们立刻关掉
+       *      (开了又关, 表现为完全打不开)。
+       *   ⚠️ 用 `setTimeout(0)` 让原生 mousedown/click 先跑完再判断 —— pointerup 比它们早。
+       *      原生那边只会做 no-op 的 `open()`, 跑完面板仍是开的, 这时再 `close()` 才是对的。
+       *   ⚠️ 点箭头那条路不会重复关: 原生的 `handleArrowClick()` 已经关掉了,
+       *      回来时 `isOpen()` 已是 false, 这里直接跳过。
+       * ------------------------------------------------------------------ */
+      if (wasOpenWhenPressed && inside) {
+        setTimeout(() => {
+          if (!this.disabled && this.select().isOpen()) {
+            this.select().close();
+          }
+        }, 0);
+      }
+      return;
+    }
+
+    if (!inside) {
       return;
     }
 
@@ -535,6 +578,9 @@ export class SelectComponent<T> implements ControlValueAccessor {
 
   /** 见 `onFieldPointerdown()`: 这一下是否"起手在控件本体上"。 */
   private pressStartedOnField = false;
+
+  /** 见 `onFieldPointerup()`: 按下那一刻面板**是不是已经开着**(宽屏用它区分开/关)。 */
+  private pressStartedWhileOpen = false;
 
   /**
    * Prevent Escape key press from propagating to parent components

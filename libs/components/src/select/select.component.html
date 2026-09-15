@@ -5,13 +5,19 @@
     ② 输入框只读 ⇒ 全程不弹软键盘;
     ③ 不再需要"只能靠输入一个字符才弹出面板"那个别扭路径。
   ⚠️ 反面: `searchable = true` 时"再点一次"只会 `open()`(已是开着的 no-op),
-  所以永远收不起来 —— 用户报的"点箭头展开后无法再点箭头关闭"就是这个。
-  桌面端保持可搜索(那里没有软键盘, 长列表更需要输入过滤)。
+  所以**永远收不起来** —— 用户报的"点箭头展开后无法再点箭头关闭"就是这个。
+  桌面端保持可搜索(那里没有软键盘, 长列表更需要输入过滤),
+  但"开着时再点一下要关掉"由下面的 `(pointerup)` 补上(见 ts 里 Y 段的说明)。
 -->
 <!--
-  ⚠️ 第十七批(U 段): 展开时机 = **松手**(pointerup), 不是按下(pointerdown)。
+  ⚠️ 第十七批(U 段): 窄屏展开时机 = **松手**(pointerup), 不是按下(pointerdown);
   pointerdown 只负责 `preventDefault()`(掐掉兼容 mouse 事件), 见 ts 里
   `onFieldPointerdown()` / `onFieldPointerup()` 的注释 —— 两者必须成对。
+
+  ⚠️ 第二十一批(Y 段): 这两个处理器**不再只服务窄屏** —— 宽屏也接, 但只做一件事:
+  "面板已经开着时, 再点一下控件本体把它关掉"(ng-select 自己的 `handleMousedown`
+  在 `searchable = true` 时只 `open()`, 永远关不掉)。宽屏**不** `preventDefault()`,
+  输入框的焦点与文本选区保持原生。
 -->
 <div
   class="tw-relative tw-w-full"
