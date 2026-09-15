@@ -98,6 +98,11 @@
             {{ "permission" | i18n }}
           </th>
         }
+        @if (showModifiedDate()) {
+          <th bitCell class="warden-modified-th">
+            {{ "wardenModified" | i18n }}
+          </th>
+        }
         <th
           bitCell
           [ngClass]="
@@ -219,6 +224,7 @@
             [showOwner]="showOwner"
             [showCollections]="showCollections"
             [showGroups]="showGroups"
+            [showModifiedDate]="showModifiedDate()"
             [organizations]="allOrganizations"
             [showPermissionsColumn]="showPermissionsColumn"
             [groups]="allGroups"
@@ -244,6 +250,7 @@
             [showOwner]="showOwner"
             [showCollections]="showCollections"
             [showGroups]="showGroups"
+            [showModifiedDate]="showModifiedDate()"
             [showPremiumFeatures]="showPremiumFeatures"
             [useEvents]="useEvents"
             [viewingOrgVault]="viewingOrgVault"

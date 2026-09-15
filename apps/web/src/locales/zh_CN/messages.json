@@ -16864,5 +16864,8 @@
   "wardenDecrease": {
     "message": "减少",
     "description": "自托管定制(U 段): 最大访问次数「−」按钮的无障碍标签。"
+  },
+  "wardenModified": {
+    "message": "最近修改"
   }
 }

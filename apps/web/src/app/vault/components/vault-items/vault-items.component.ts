@@ -1,7 +1,7 @@
 // FIXME: Update this file to be type safe and remove this and next line
 // @ts-strict-ignore
 import { SelectionModel } from "@angular/cdk/collections";
-import { Component, EventEmitter, Input, Output, inject, signal } from "@angular/core";
+import { Component, EventEmitter, Input, input, Output, inject, signal } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import {
   Observable,
@@ -79,6 +79,17 @@ export class VaultItemsComponent<C extends CipherViewLike> {
   // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
   // eslint-disable-next-line @angular-eslint/prefer-signals
   @Input() showGroups: boolean;
+
+  /**
+   * 第二十二批(Z 段): 是否显示「最近修改」列。
+   *
+   * 设计稿的列表列是「选择 · 名称 · 用户名 · 文件夹 · 最近修改」, 我们这里原本没有
+   * 最近修改。做成 **可选输入** 而不是无条件加列, 原因有两个:
+   *   ① 组织密码库(org vault)复用同一张表头与行组件, 它没有"最近修改"的语义;
+   *   ② 列数一旦不对齐, 整张表会错位 —— 必须由调用方显式打开, 不能默认开。
+   * 暂时只由 `individual-vault`(个人密码库)传 true。
+   */
+  readonly showModifiedDate = input(false);
   // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
   // eslint-disable-next-line @angular-eslint/prefer-signals
   @Input() useEvents: boolean;

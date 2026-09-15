@@ -7,6 +7,7 @@ import {
   HostListener,
   inject,
   Input,
+  input,
   OnInit,
   Output,
   ViewChild,
@@ -88,6 +89,36 @@ export class VaultCipherRowComponent<C extends CipherViewLike> implements OnInit
   // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
   // eslint-disable-next-line @angular-eslint/prefer-signals
   @Input() showGroups: boolean;
+
+  /**
+   * 第二十二批(Z 段): 「最近修改」列(与表头 `warden-modified-th` 成对)。
+   *
+   * ⚠️ 与 `vault-items.component.ts` 的 `showModifiedDate` **必须同时开/关** ——
+   *    表头在一处、行在另一处, 只改一边会让整张表错位。
+   */
+  readonly showModifiedDate = input(false);
+
+  /**
+   * 「最近修改」列显示的文本。
+   *
+   * 用 `Intl.DateTimeFormat` 而不是 Angular 的 `date` 管道: 行组件是**逐行渲染**的,
+   * 每行都去建一次管道实例/查一次 locale 不划算; 这里按 `zh-CN` 固定成 `YYYY-MM-DD`,
+   * 与设计稿的写法一致。`revisionDate` 缺失时给空串, 不留 `undefined` 在表格里。
+   */
+  get revisionDateLabel(): string {
+    const d = (this.cipher as { revisionDate?: Date })?.revisionDate;
+    if (!d) {
+      return "";
+    }
+    const date = d instanceof Date ? d : new Date(d);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
   // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
   // eslint-disable-next-line @angular-eslint/prefer-signals
   @Input() showPremiumFeatures: boolean;

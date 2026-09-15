@@ -6,6 +6,7 @@ import {
   HostListener,
   inject,
   Input,
+  input,
   Output,
   ViewChild,
 } from "@angular/core";
@@ -55,6 +56,9 @@ export class VaultCollectionRowComponent<C extends CipherViewLike> {
   // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
   // eslint-disable-next-line @angular-eslint/prefer-signals
   @Input() disabled: boolean;
+
+  /** 第二十二批(Z 段): 与 cipher 行共用表头, 必须同样占一格, 否则整张表错位。 */
+  readonly showModifiedDate = input(false);
   // FIXME(https://bitwarden.atlassian.net/browse/CL-903): Migrate to Signals
   // eslint-disable-next-line @angular-eslint/prefer-signals
   @Input() collection: CollectionView;

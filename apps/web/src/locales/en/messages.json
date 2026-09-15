@@ -1845,9 +1845,6 @@
   "clearAll": {
     "message": "Clear all"
   },
-  "done": {
-    "message": "Done"
-  },
   "filtersSelected": {
     "message": "$COUNT$ selected",
     "placeholders": {
@@ -16979,5 +16976,8 @@
   "wardenDecrease": {
     "message": "Decrease",
     "description": "自托管定制(U 段): 最大访问次数「−」按钮的无障碍标签。"
+  },
+  "wardenModified": {
+    "message": "Last modified"
   }
 }

@@ -3001,3 +3001,26 @@ main#main-content app-vault-filter a,
 main#main-content app-vault-filter button {
   border-radius: var(--radius-sm) !important;
 }
+
+/* ----------------------------------------------------------------------
+ * Z3b. 「最近修改」列（第二十二批）—— 与表头 `warden-modified-th` /
+ *      行内 `warden-modified-td` 成对出现（见 vault-items / vault-cipher-row）。
+ *
+ *   设计稿里它是一列灰色小字；窄屏直接**整列隐藏**（th 与 td 一起），
+ *   信息密度让位给"名称 + 用户名"两行。⚠️ 只隐藏其中一半会让整张表错位。
+ * ------------------------------------------------------------------ */
+main#main-content app-vault-items .warden-modified-th,
+main#main-content app-vault-items .warden-modified-td {
+  width: 132px;
+  white-space: nowrap;
+  color: var(--muted) !important;
+}
+main#main-content app-vault-items .warden-modified-th {
+  text-align: left;
+}
+@media (max-width: 1023px) {
+  main#main-content app-vault-items .warden-modified-th,
+  main#main-content app-vault-items .warden-modified-td {
+    display: none !important;
+  }
+}

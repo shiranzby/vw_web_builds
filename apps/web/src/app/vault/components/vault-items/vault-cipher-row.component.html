@@ -97,6 +97,11 @@
     </p>
   </td>
 }
+@if (showModifiedDate()) {
+  <td bitCell [ngClass]="RowHeightClass" class="warden-modified-td">
+    {{ revisionDateLabel }}
+  </td>
+}
 <td
   bitCell
   [ngClass]="RowHeightClass"
