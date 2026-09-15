@@ -75,7 +75,28 @@ export class SelectComponent<T> implements ControlValueAccessor {
   protected readonly narrow = signal(this.narrowQuery.matches);
 
   /** 转屏 / 拉宽窗口时跟着换档: 窄屏纯选择器 ↔ 宽屏可搜索。 */
-  private readonly onNarrowChange = (event: MediaQueryListEvent) => this.narrow.set(event.matches);
+  private readonly onNarrowChange = (event: MediaQueryListEvent) => {
+    this.narrow.set(event.matches);
+
+    /* 🔴 第二十批(X 段): **变成宽屏时**必须把我们写过的几何还回去。
+       窄屏那套是 `position: fixed` + 视口坐标, 而 ng-select 自己按**文档坐标**算
+       `top` —— 留着不还, 桌面端的面板会一直按视口坐标摆, 位置全错。
+       ⚠️ 这件事**只能在这里做**(转档那一刻), 不能放到 `fitPanelToKeyboard()` 的
+       桌面早退分支里 —— 那里每次 open/scroll 都会跑, 会把 ng-select **刚写好**的
+       `top/left/width/position` 一起清掉, 面板于是掉回"文档末尾的静态位置"
+       (视口下方一屏、整屏宽), 用户看到的是"点了没反应 + 右侧多一条滚动条"。
+       详见 `fitPanelToKeyboard()` 里那段注释(这是第十三~十九批电脑端下拉全废的根因)。 */
+    if (!event.matches) {
+      this.stopGeometryWatch();
+      const panel = document.getElementById(this.select().dropdownId);
+      if (panel) {
+        this.clearGeometry(panel);
+      }
+      if (this.select().isOpen()) {
+        this.select().close();
+      }
+    }
+  };
 
   protected readonly selectedValue = signal<T | undefined | null>(undefined);
   readonly selectedOption: Signal<Option<T> | null | undefined> = computed(() =>
@@ -220,15 +241,22 @@ export class SelectComponent<T> implements ControlValueAccessor {
        同一时刻若有两个面板存在就会改错对象。 */
     const panel = document.getElementById(this.select().dropdownId);
 
-    /* 断点与 F/G/M 段一致(768px); 桌面没有软键盘, 保持 ng-select 原生定位。
-       ⚠️ 交还前必须先把我们写过的几何**清掉**并停止盯梢 —— 否则从窄屏转过宽屏
-       (横屏 / 拉宽窗口)时, 上一次留下的 `position: fixed; top: …` 会一直生效,
-       桌面端的面板再也回不到 ng-select 的原生定位。 */
+    /* 🔴🔴 第二十批(X 段) 修掉的坑 —— 桌面端**绝对不能**在这里清几何。
+       第十三批(Q 段)在这里写了 `if (panel) this.clearGeometry(panel);`, 注释里说
+       是为了"从窄屏转过宽屏时不留下 position: fixed"。出发点没错, **位置错了**:
+       这个函数挂在 `(open)` 的 rAF、以及 `document` 的 scroll(capture)与
+       visualViewport 的 resize/scroll 上 —— **桌面端每次打开、每次滚动都会跑**。
+       而 ng-select 就是在 open 之后的变更检测里写下 `top/left/width`(以及
+       position/opacity)的, 我们这一清, 面板就掉回"文档末尾的静态位置":
+       视口下方约一屏、整屏宽 —— 现象正是用户报的
+       **"点了没反应, 而且最右侧会多出一条滚动条"**(滚动条是面板把文档撑高了)。
+       实测(1280x860): 内联样式只剩 `min-width: 446px; opacity: 1`, 面板 rect
+       `[0, 862, 1280, …]`, 文档高从 860 涨到 991~1276。
+       ⇒ 交还几何只在**窄→宽切换那一刻**做, 见 `onNarrowChange()`。
+
+       断点与 F/G/M 段一致(768px); 桌面没有软键盘, 保持 ng-select 原生定位。 */
     if (window.matchMedia("(min-width: 769px)").matches) {
       this.stopGeometryWatch();
-      if (panel) {
-        this.clearGeometry(panel);
-      }
       return;
     }
 

@@ -2211,9 +2211,6 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
   /* ------------------------------------------------------------------
    * U4. 发送页的「要分享的文本」与「私密备注」压成**一行输入框**高。
    *
-   *   两条都是 `rows="3"` 的 textarea。K4 已经把所有对话框 textarea 收到 54px,
-   *   用户要求再收到"像自定义域名那样的一行"。
-   *
    *   ⚠️ 第十八批/V 段: 32px → 38px(= `--warden-line-h`)。用户第二次反馈里明确要求
    *      "要分享的文本 / 私密备注的高度应该和 Send 名称的输入框保持一致, 并且确定
    *      一行输入框高度的具体值统一应用" —— 现在这三者与 `bit-select` 全是 38px。
@@ -2222,17 +2219,12 @@ main#main-content .warden-cf-actions:not(.warden-cf-verified) .warden-cf-cancel 
    *      用 `bit-dialog textarea` 会把条目编辑里的备注、以及"指定的人员"那个
    *      `emails` 多行框一起压掉(它们该保持多行)。这正是第十六批 S2 踩过的坑。
    *   ⚠️ `line-height` 要等于高度, 单行文本才会落在垂直中点(同 S2 的做法)。
-   *   两个字段都只出现在 `tools-send-form` 里, 所以不需要额外加页级钩子类。
+   *
+   *   🔴 第二十批 / X 段: 这条规则**已从本段移出、提升为全局**（用户在电脑端也要求
+   *      这两个字段与 Send 名称同高、内容居中）。规则本体见文件末尾 **X2**，
+   *      CI 第 25 组(U 段)的负向守卫也同步把它移出了受守卫列表。
+   *      留这段注释是因为"为什么必须用 formcontrolname 钉死"的结论仍在这里。
    * ------------------------------------------------------------------ */
-  bit-dialog textarea[formcontrolname="text"],
-  bit-dialog textarea[formcontrolname="notes"] {
-    height: var(--warden-line-h) !important;
-    min-height: var(--warden-line-h) !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    line-height: var(--warden-line-h) !important;
-    resize: none !important;
-  }
 
   /* ------------------------------------------------------------------
    * U5. 发送列表页: 切换条(所有/文本/文件 Send)上方那 16px 空隙去掉。
@@ -2584,12 +2576,15 @@ html.theme_dark .warden-totp-copied .warden-totp-digits {
  *      ⇒ 类赢, 我这条被压掉, 实测 padding 仍是 12px、框还是 64px。
  *      把 `[bitInput]` 写进 `:has()` 里, 它的权重变成 (0,1,1) ⇒ 整条 (0,1,5) > (0,1,0) 才生效。
  *      (已用 CSSOM `insertRule` 逐条试过: 不带属性 = 62px 无效, 带属性 = 38px 生效。)
+ *
+ *   🔴 第二十批 / X 段: **本条已从"仅窄屏"提升为全局** —— 用户在电脑端也要求
+ *      「要分享的文本 / 私密备注」与 Send 名称同高(真正的一行)。
+ *      所以它不再写在 @media 里; CI 第 25 组(W 段)的负向守卫同步把它移出受守卫列表。
+ *      影响面仍然只有发送表单(`:has(tools-send-form)`), 条目编辑对话框的多行备注不受影响。
  * ------------------------------------------------------------------ */
-@media (max-width: 768px) {
-  bit-dialog:has(tools-send-form) bit-form-field div:has(> textarea[bitInput]) {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-  }
+bit-dialog:has(tools-send-form) bit-form-field div:has(> textarea[bitInput]) {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 /* ----------------------------------------------------------------------
@@ -2622,4 +2617,93 @@ html.theme_dark .warden-totp-copied .warden-totp-digits {
     font-size: var(--warden-filters-new-fs) !important;
     line-height: 20px !important;
   }
+}
+
+/* ======================================================================
+ * X 段. 电脑端（桌面）一批反馈（第二十批）—— 与前几批同理: **不是 L4 迁入的**。
+ *
+ *   用户原话的 5 条里，①③ 是"东西多余 / 东西坏了"，②④ 是"两端不一致"，
+ *   ⑤（设置页排版）需要先出设计稿确认，不在本段。
+ *
+ *   🔴 本批最重要的一条是 X3 —— 那是**第十三批就在的电脑端功能性缺陷**
+ *      （所有下拉点了没反应 + 右侧多一条滚动条），修在 `select.component.ts`。
+ *      它之所以能活到第十九批，是因为第十三~十九批的验收**全部只跑 390px 宽**。
+ *      ⇒ 教训: **改动不能只在一个视口宽度上验收**。本批的验收补上了 1280px 一遍。
+ * ====================================================================== */
+
+/* ----------------------------------------------------------------------
+ * X1. 页头右上角的「产品切换宫格」在电脑端也去掉。
+ *
+ *   它展开后只有一个「密码管理器」入口，点了就是回首页 —— 用户判断"没有实际作用"。
+ *   窄屏早在 I 段(仅密码库页)与 R 段(全局)就藏掉了，桌面端当时**刻意保留**
+ *   (注释写的是"那是官方给多产品用户准备的入口")，本次按用户要求一并去掉。
+ *
+ *   注: 与 R 段那条同名选择器不冲突 —— 两条声明相同，谁赢都行。
+ * ------------------------------------------------------------------ */
+main#main-content app-header header product-switcher {
+  display: none !important;
+}
+
+/* ----------------------------------------------------------------------
+ * X2. **从 U4 提升为全局**：发送页「要分享的文本 / 私密备注」压成一行。
+ *
+ *   第十七批(U 段)只在窄屏做；第二十批用户要求电脑端也"像移动端一样真正的一行"。
+ *   规则本体原封不动搬过来，只去掉外层的 @media —— 见 U4 处留下的指针注释。
+ *
+ *   ⚠️ 必须与 W 段那条"清掉 textarea 外层上下内边距"的规则**同时**全局：
+ *      光把 textarea 压到 38px、外面那 12px×2 的内边距还在，可见框依然是 64px。
+ * ------------------------------------------------------------------ */
+bit-dialog textarea[formcontrolname="text"],
+bit-dialog textarea[formcontrolname="notes"] {
+  height: var(--warden-line-h) !important;
+  min-height: var(--warden-line-h) !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: var(--warden-line-h) !important;
+  resize: none !important;
+}
+
+/* ----------------------------------------------------------------------
+ * X4. 藏掉「最大访问次数」输入框的原生数字微调箭头。
+ *
+ *   该字段右侧本来就有应用自己的一对「− / +」(`[bitsuffix]`)，而它是
+ *   `type="number"` ⇒ 浏览器还会在最右侧再画一组上下箭头，与 −/+ 挤在一起。
+ *   用 `appearance: textfield` 收掉；WebKit 那两个伪元素要单独清。
+ *
+ *   范围只到发送表单：其它数字输入(如组织席位数)没有自带步进器，留着原生箭头无妨。
+ * ------------------------------------------------------------------ */
+bit-dialog:has(tools-send-form) input[type="number"] {
+  appearance: textfield !important;
+  -moz-appearance: textfield !important;
+}
+bit-dialog:has(tools-send-form) input[type="number"]::-webkit-outer-spin-button,
+bit-dialog:has(tools-send-form) input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+}
+
+/* ----------------------------------------------------------------------
+ * X1b. 页头头像跟随「我的账户」里的本地头像。
+ *
+ *   <我的账户> 那张卡片上的头像是我们自己的 `<button class="warden-acct-avatar">`
+ *   (J13 头像上传)，用户选好的图片由 `account-card.component.ts` 写到
+ *   `document.body` 的 `--warden-avatar` + `warden-avatar-on` 上（**只存在浏览器本地**，
+ *   不上传服务端）。
+ *
+ *   而页头右上角用的是 Bitwarden 自带的 `<bit-avatar>`：它读服务端的首字母/头像色，
+ *   画的是一个内联 `<svg>` + `<text>`。于是同一账号在两处显示成两张不同的头像 ——
+ *   用户指出的正是这个。
+ *
+ *   改法: 同一张本地图铺到那颗 svg 上，并把首字母藏掉(否则字会压在图上)。
+ *   与 `.warden-acct-avatar` 的 `body.warden-avatar-on …` 口径保持一致。
+ * ------------------------------------------------------------------ */
+body.warden-avatar-on main#main-content app-header bit-avatar svg {
+  background-image: var(--warden-avatar) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+body.warden-avatar-on main#main-content app-header bit-avatar svg text {
+  display: none !important;
 }
