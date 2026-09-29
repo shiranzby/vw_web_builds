@@ -2896,8 +2896,18 @@ body.wd .card .gen-out {
   app-side-nav a[data-testid="nav-item-interactive"] bit-icon {
     font-size: 18px !important;
   }
-  /* 右侧那个按钮槽在导轨里会挤掉宽度 */
-  app-side-nav [data-testid="nav-item-container"] > div:last-child {
+  /* 右侧那个按钮槽（`[slot=end]`，例如条目数徽章）在导轨里会挤掉宽度。
+     🔴 选择器**必须多下探一层**。上游模板
+     (`libs/components/src/navigation/nav-item.component.html`) 里
+     `[data-testid="nav-item-container"]` 只有**一个**子元素 ——
+     那个承载整项内容的 `div.tw-relative.tw-flex.tw-items-center.tw-h-full`，
+     真正的 slot 槽是它的最后一个子 div。原来写成 `> div:last-child`
+     等于把这个唯一子元素整体 `display:none` ⇒ 图标与标签全被隐藏，
+     导轨变成一条**空白黑条**（线上实测 itemRect 56×52 但
+     icon/label 全是 0×0、getClientRects().length === 0）。
+     ⚠️ 用 `div:last-child`（带标签名）而不是 `:last-child`：折叠态下内核
+     只渲染 `<a>`，没有尾随 div，这条规则自然不匹配，不会误伤。 */
+  app-side-nav [data-testid="nav-item-container"] > div > div:last-child {
     display: none !important;
   }
   /* 组的小三角：导轨里不需要（它换来的是"两个收起逻辑"，见文件头说明） */
