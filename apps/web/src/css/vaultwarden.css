@@ -621,10 +621,15 @@ bit-nav-logo bit-nav-item .bwi-shield {
     margin-bottom: 0 !important;
     padding-bottom: 0 !important;
   }
-  /* K4. 备注这类多行输入默认 100px, 一屏里根本用不满 */
+  /* K4. 备注这类多行输入默认 100px, 一屏里根本用不满 ⇒ 只压"下限"和上下内边距。
+     🔴 第二十二批(AA 段)修正: 这里原本还有 `height: 54px !important` —— 与 X2 同一个病:
+        它把**所有**对话框多行框钉成 54px, 而 `!important` 会压掉 `bitInput` 写进去的
+        行内 `height`(样式表 `!important` > 非 `!important` 的行内声明, 同 S2 的结论),
+        于是应用自带的 `adjustTextareaHeight()` 自增高彻底失效。
+        现在只留 `min-height` 兜底: 框体随内容行数长高, 空的时候也不会比 54px 矮。
+        ⚠️ 发送表单那两个字段不受影响 —— X2 权重更高, 仍是 38px 单行。 */
   bit-dialog bit-form-field textarea,
   .cdk-overlay-pane bit-form-field textarea {
-    height: 54px !important;
     min-height: 54px !important;
     padding-top: 6px !important;
     padding-bottom: 6px !important;
@@ -2652,9 +2657,24 @@ main#main-content app-header header product-switcher {
  *
  *   ⚠️ 必须与 W 段那条"清掉 textarea 外层上下内边距"的规则**同时**全局：
  *      光把 textarea 压到 38px、外面那 12px×2 的内边距还在，可见框依然是 64px。
+ *
+ *   🔴🔴 第二十二批(AA 段)修正: 这两个选择器原本是**裸的** `bit-dialog textarea[…]`。
+ *      当时的记录(见 U 段 2218 行、W 段 2568 行)写着"必须用 formcontrolname 钉死,
+ *      否则会连条目编辑的备注一起压掉" —— 但 `notes` 这个名字**恰恰是两边共用的**:
+ *         · 发送表单「私密备注」 send-options.component.html      formControlName="notes"
+ *         · 条目编辑「备注」   additional-options-section.component.html  formControlName="notes"
+ *      所以"钉死"根本没起到区分作用, 条目编辑的备注被一并压成 38px + `line-height: 38px`,
+ *      而 `height` 带 `!important` 又盖住 `bitInput` 写的行内 `height`
+ *      (样式表 `!important` > 非 `!important` 行内, 同 S2 的结论) ⇒ **自增高失效**。
+ *      用户看到的就是"编辑登录 → 备注: 打多少行都只显示一行, 右边一条内部滚动条"。
+ *
+ *      ⇒ 修法: 作用域收窄到发送表单 (`:has(tools-send-form)`, 与 W1 / X4 同一口径)。
+ *        条目编辑的备注无需任何新规则 —— 只要不再盖住行内 height,
+ *        `bitInput` 的 `adjustTextareaHeight()`(height=scrollHeight) 自然就把它撑开了。
+ *        ⚠️ CI 里引用本选择器的三处字面量必须同步(见第二十二批断言组)。
  * ------------------------------------------------------------------ */
-bit-dialog textarea[formcontrolname="text"],
-bit-dialog textarea[formcontrolname="notes"] {
+bit-dialog:has(tools-send-form) textarea[formcontrolname="text"],
+bit-dialog:has(tools-send-form) textarea[formcontrolname="notes"] {
   height: var(--warden-line-h) !important;
   min-height: var(--warden-line-h) !important;
   padding-top: 0 !important;
