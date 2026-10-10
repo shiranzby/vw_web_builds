@@ -56,6 +56,14 @@
           route="settings/emergency-access"
         ></bit-nav-item>
       }
+      <!--
+        自托管定制: 「账号管理」并进设置栏目(原来只有 /admin/ 那个独立页面 + 一个要另外记的令牌)。
+        只有所有者/管理者看得到 —— 判定见 layouts/account-admin.service.ts, 进入权限
+        另有 account-admin.guard.ts 兜底(直接敲 URL 也进不去)。
+      -->
+      @if (isAdmin()) {
+        <bit-nav-item text="账号管理" route="settings/account-admin"></bit-nav-item>
+      }
       <billing-free-families-nav-item></billing-free-families-nav-item>
     </bit-nav-group>
   </app-side-nav>

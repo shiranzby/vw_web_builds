@@ -20,6 +20,7 @@ import { PremiumSubscriptionRoutingService } from "@bitwarden/web-vault/app/bill
 import { BillingFreeFamiliesNavItemComponent } from "../billing/shared/billing-free-families-nav-item.component";
 import { CoachmarkComponent, CoachmarkService } from "../vault/components/coachmark";
 
+import { AccountAdminService } from "./account-admin.service";
 import { AccountCardComponent } from "./account-card.component";
 import { MobileSubNavComponent } from "./mobile-sub-nav.component";
 import { WebLayoutModule } from "./web-layout.module";
@@ -52,6 +53,14 @@ export class UserLayoutComponent implements OnInit {
 
   protected readonly coachmarkService = inject(CoachmarkService);
   protected readonly sideNavService = inject(SideNavService);
+
+  /**
+   * 自托管定制: 设置导航里要不要出现「账号管理」。
+   * 判定由 `AccountAdminService` 的 effect 自动触发(账号一就绪就拉), 这里只读结果 ——
+   * **默认 false**, 判出来才变 true, 免得每个普通用户都看到入口闪一下。
+   */
+  private readonly accountAdminService = inject(AccountAdminService);
+  protected readonly isAdmin = this.accountAdminService.isAdmin;
 
   protected readonly importCoachmarkOpen = computed(
     () => this.coachmarkService.activeStepId() === "importData",

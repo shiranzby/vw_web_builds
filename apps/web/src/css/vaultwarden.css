@@ -2727,3 +2727,402 @@ body.warden-avatar-on main#main-content app-header bit-avatar svg {
 body.warden-avatar-on main#main-content app-header bit-avatar svg text {
   display: none !important;
 }
+
+/* ======================================================================
+ * AC 段. 「账号管理」并进设置栏目（第二十三批）—— **不是 L4 迁入的**。
+ *
+ *   ⚠️ 为什么是 AC 而不是 Y: 「Y 段」已被**第二十一批**(下拉"打开之后必须能关掉")占用 ——
+ *   那一批只改了 JS、没有 CSS, 所以看 CSS 段列表会以为 Y 还空着。段字母是**跨仓库**的
+ *   命名空间(断言写在 warden-worker 的 build-web-vault.yaml 里), 不能只看一边。
+ * ----------------------------------------------------------------------
+ *   需求原话: 账号管理台原来只能去独立的 `/admin/`，还要另外记一个与账号完全脱钩的
+ *   `ADMIN_TOKEN`；而且那个页面**改不了账号的角色**。现在：
+ *     · 入口只在 **所有者 / 管理者** 的设置导航里出现（判定见
+ *       `layouts/account-admin.service.ts`，进页权限另有 `settings/account-admin.guard.ts` 兜底）；
+ *     · 角色直接列在表里，所有者可就地改；
+ *     · `/admin/` 保留，但降级成"密码库打不开时的应急通道"。
+ *   组件: `settings/account-admin.component.{ts,html}`
+ *
+ *   ⚠️ 颜色**全部**走应用主题变量（`--color-*`，定义在
+ *   `libs/components/src/tw-theme.css`，明暗各一套），所以两种主题自动跟随 ——
+ *   这里**不需要**再补 `html.theme_dark` 分支（V5 段那种写法只留给"必须硬编码的状态色"）。
+ *
+ *   ⚠️ 数值口径（与项目既有各段一致，不再自定义新档位）：
+ *       控件最小高度 36px（窄屏抬到 44px 的触控下限）；圆角——按钮走胶囊 980px、
+ *       卡片/弹窗走 12/20px；间距取 4/8/16/24。
+ * ====================================================================== */
+
+/* --- 概览: 与 /admin/ 同口径的 5 个计数 --- */
+main#main-content .warden-admin-stats {
+  display: grid;
+  gap: 8px;
+  /* 自适应列数, 不写死每列宽度: 窄屏 2 列、宽屏一行铺满 */
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  margin: 0 0 16px;
+}
+main#main-content .warden-admin-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgb(var(--color-background-alt));
+  text-align: center;
+}
+main#main-content .warden-admin-stat b {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  /* 数字等宽: 刷新时计数不会左右跳 */
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--color-text-main));
+}
+main#main-content .warden-admin-stat span {
+  font-size: 12px;
+  color: rgb(var(--color-text-muted));
+}
+
+/* --- 工具行: 标题 + 刷新 --- */
+main#main-content .warden-admin-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 8px;
+}
+main#main-content .warden-admin-bar h2 {
+  margin: 0;
+}
+main#main-content .warden-admin-note {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgb(var(--color-text-muted));
+}
+
+/* --- 按钮: 三级里只用到「Tinted」与「Plain」+ 一个破坏性 --- */
+main#main-content .warden-admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 980px;
+  background: rgb(var(--color-secondary-100));
+  color: rgb(var(--color-text-main));
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+main#main-content .warden-admin-btn:hover:not(:disabled) {
+  background: rgb(var(--color-secondary-300));
+}
+main#main-content .warden-admin-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+main#main-content .warden-admin-btn-plain {
+  background: transparent;
+  color: rgb(var(--color-primary-600));
+  padding: 0 8px;
+}
+main#main-content .warden-admin-btn-plain:hover:not(:disabled) {
+  background: var(--color-hover-default);
+}
+main#main-content .warden-admin-danger {
+  background: rgb(var(--color-danger-600));
+  color: rgb(var(--color-text-contrast));
+}
+main#main-content .warden-admin-danger:hover:not(:disabled) {
+  background: rgb(var(--color-danger-700));
+}
+
+/* --- 账号表 --- */
+main#main-content .warden-admin-tablewrap {
+  border: 1px solid rgb(var(--color-secondary-100));
+  border-radius: 12px;
+  overflow: hidden;
+}
+main#main-content .warden-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+main#main-content .warden-admin-table th,
+main#main-content .warden-admin-table td {
+  padding: 8px 16px;
+  text-align: left;
+  vertical-align: middle;
+}
+main#main-content .warden-admin-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgb(var(--color-text-muted));
+  background: rgb(var(--color-background-alt));
+}
+main#main-content .warden-admin-table tbody tr + tr td {
+  border-top: 1px solid rgb(var(--color-secondary-100));
+}
+main#main-content .warden-admin-acct {
+  display: table-cell;
+  max-width: 0; /* 让长邮箱在同一行内被省略号截断, 而不是把表格撑开 */
+}
+main#main-content .warden-admin-acct b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+main#main-content .warden-admin-acct span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: rgb(var(--color-text-muted));
+}
+main#main-content .warden-admin-acts-col {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* --- 角色 / 状态徽章 --- */
+main#main-content .warden-admin-role,
+main#main-content .warden-admin-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 980px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+main#main-content .warden-admin-role-user {
+  background: rgb(var(--color-secondary-100));
+  color: rgb(var(--color-text-main));
+}
+main#main-content .warden-admin-role-admin {
+  background: rgb(var(--color-info-100));
+  color: rgb(var(--color-info-700));
+}
+main#main-content .warden-admin-role-owner {
+  background: rgb(var(--color-primary-100));
+  color: rgb(var(--color-primary-700));
+}
+main#main-content .warden-admin-status-ok {
+  background: rgb(var(--color-success-100));
+  color: rgb(var(--color-success-700));
+}
+main#main-content .warden-admin-status-warn {
+  background: rgb(var(--color-warning-100));
+  color: rgb(var(--color-warning-700));
+}
+main#main-content .warden-admin-status-off {
+  background: rgb(var(--color-danger-100));
+  color: rgb(var(--color-danger-700));
+}
+
+/* --- 加载 / 空状态(三段式) --- */
+main#main-content .warden-admin-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 16px;
+  border-radius: 12px;
+  background: rgb(var(--color-background-alt));
+  color: rgb(var(--color-text-muted));
+  font-size: 13px;
+  text-align: center;
+}
+main#main-content .warden-admin-empty b {
+  font-size: 15px;
+  color: rgb(var(--color-text-main));
+}
+
+/* --- 详情 / 确认弹窗 --- */
+/* ⚠️ dialog 虽然渲染在 top-layer, 但**仍在 `<main id="main-content">` 的 DOM 里**,
+      所以照旧套前缀 —— 这条既保证命中也避免了和全局 tw- 类互相踩。 */
+main#main-content .warden-admin-dlg {
+  /* 用 min() 而不是写死宽度: 窄屏自动贴边, 宽屏不超过 560px */
+  inline-size: min(560px, calc(100% - 32px));
+  max-block-size: 86dvh;
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  background: rgb(var(--color-background));
+  color: rgb(var(--color-text-main));
+  overflow: auto;
+}
+main#main-content .warden-admin-dlg::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+main#main-content .warden-admin-confirm {
+  inline-size: min(420px, calc(100% - 32px));
+}
+main#main-content .warden-admin-dlg-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid rgb(var(--color-secondary-100));
+}
+main#main-content .warden-admin-dlg-head h2 {
+  margin: 0;
+  font-size: 17px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+main#main-content .warden-admin-x {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgb(var(--color-text-muted));
+  font: inherit;
+  cursor: pointer;
+}
+main#main-content .warden-admin-x:hover {
+  background: rgb(var(--color-secondary-100));
+}
+main#main-content .warden-admin-dlg-body {
+  padding: 16px;
+}
+main#main-content .warden-admin-kv {
+  display: grid;
+  grid-template-columns: minmax(88px, auto) 1fr;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+main#main-content .warden-admin-kv dt {
+  color: rgb(var(--color-text-muted));
+}
+main#main-content .warden-admin-kv dd {
+  margin: 0;
+  word-break: break-all;
+}
+main#main-content .warden-admin-sub {
+  margin: 16px 0 8px;
+  font-size: 15px;
+}
+main#main-content .warden-admin-hint {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgb(var(--color-text-muted));
+}
+main#main-content .warden-admin-hint-inline {
+  margin: 0;
+}
+main#main-content .warden-admin-warnbox {
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: rgb(var(--color-warning-100));
+  color: rgb(var(--color-warning-700));
+}
+main#main-content .warden-admin-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+main#main-content .warden-admin-select {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid rgb(var(--color-secondary-300));
+  border-radius: 10px;
+  background: rgb(var(--color-background));
+  color: rgb(var(--color-text-main));
+  font: inherit;
+  font-size: 14px;
+}
+main#main-content .warden-admin-select:disabled {
+  opacity: 0.6;
+}
+main#main-content .warden-admin-ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+main#main-content .warden-admin-ops-end {
+  justify-content: flex-end;
+}
+main#main-content .warden-admin-danger-zone {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgb(var(--color-secondary-100));
+}
+main#main-content .warden-admin-confirm-text {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  /* 文案里有换行(删除账号那条), 保留它 */
+  white-space: pre-line;
+}
+
+/* --- 窄屏: 表格改卡片列表 ---
+   规范不允许横向滚动, 所以不靠 overflow-x, 而是把每个 <tr> 变成一块卡片,
+   并把次要列(条目/设备/两步验证)藏掉 —— 它们本来就是辅助信息, 详情弹窗里有。 */
+@media (max-width: 768px) {
+  main#main-content .warden-admin-table,
+  main#main-content .warden-admin-table tbody,
+  main#main-content .warden-admin-table tr,
+  main#main-content .warden-admin-table td {
+    display: block;
+  }
+  main#main-content .warden-admin-table thead,
+  main#main-content .warden-admin-extra {
+    display: none;
+  }
+  main#main-content .warden-admin-tablewrap {
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+  main#main-content .warden-admin-table tr {
+    position: relative;
+    margin-bottom: 8px;
+    padding: 8px 16px;
+    border: 1px solid rgb(var(--color-secondary-100));
+    border-radius: 12px;
+  }
+  main#main-content .warden-admin-table tbody tr + tr td {
+    border-top: 0;
+  }
+  main#main-content .warden-admin-table td {
+    padding: 4px 0;
+  }
+  main#main-content .warden-admin-acct,
+  main#main-content .warden-admin-acts-col {
+    max-width: none;
+    text-align: left;
+  }
+  /* 触控下限 44px: 窄屏的按钮/下拉/关闭键都抬到它 */
+  main#main-content .warden-admin-btn,
+  main#main-content .warden-admin-select {
+    min-height: 44px;
+  }
+  main#main-content .warden-admin-x {
+    width: 44px;
+    height: 44px;
+  }
+  main#main-content .warden-admin-ops {
+    flex-direction: column;
+  }
+  main#main-content .warden-admin-ops .warden-admin-btn {
+    width: 100%;
+  }
+  main#main-content .warden-admin-ops-end {
+    flex-direction: row;
+  }
+  main#main-content .warden-admin-ops-end .warden-admin-btn {
+    width: auto;
+    flex: 1 1 0;
+  }
+}

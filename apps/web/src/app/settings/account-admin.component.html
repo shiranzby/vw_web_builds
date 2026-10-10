@@ -1,0 +1,251 @@
+<app-header></app-header>
+
+<bit-container>
+  @let s = stats();
+
+  <!-- 概览。aria-live 让刷新后的数字变化能被读屏播报（与 /admin/ 一致） -->
+  <div class="warden-admin-stats" aria-live="polite">
+    <div class="warden-admin-stat">
+      <b>{{ s?.users ?? 0 }}</b
+      ><span>账号</span>
+    </div>
+    <div class="warden-admin-stat">
+      <b>{{ s?.items ?? 0 }}</b
+      ><span>条目</span>
+    </div>
+    <div class="warden-admin-stat">
+      <b>{{ s?.totp ?? 0 }}</b
+      ><span>两步验证</span>
+    </div>
+    <div class="warden-admin-stat">
+      <b>{{ s?.disabled ?? 0 }}</b
+      ><span>已停用</span>
+    </div>
+    <div class="warden-admin-stat">
+      <b>{{ s?.expiring ?? 0 }}</b
+      ><span>7 天内到期</span>
+    </div>
+  </div>
+
+  <div class="warden-admin-bar">
+    <h2 bitTypography="h2">账号管理</h2>
+    <button
+      type="button"
+      class="warden-admin-btn"
+      [disabled]="loading()"
+      (click)="reload()"
+      data-testid="admin-refresh"
+    >
+      刷新
+    </button>
+  </div>
+
+  <p class="warden-admin-note">
+    这里能看到每个账号的<b>元数据</b>与生命周期状态。密码库内容全程加密，任何人在这个页面上都读不到条目明文。
+  </p>
+
+  @if (loading()) {
+    <p class="warden-admin-state" role="status">
+      <i class="bwi bwi-spinner bwi-spin" aria-hidden="true"></i> 正在读取账号列表…
+    </p>
+  } @else if (users().length === 0) {
+    <!-- 空状态三段式：说明"这里是什么/为什么空/下一步" -->
+    <div class="warden-admin-state warden-admin-empty">
+      <i class="bwi bwi-users bwi-2x" aria-hidden="true"></i>
+      <b>还没有其它账号</b>
+      <span>别人在这个实例上注册之后，就会出现在这里。</span>
+    </div>
+  } @else {
+    <div class="warden-admin-tablewrap">
+      <table class="warden-admin-table" data-testid="admin-table">
+        <thead>
+          <tr>
+            <th scope="col">账号</th>
+            <th scope="col">角色</th>
+            <th scope="col">状态</th>
+            <th scope="col" class="warden-admin-extra">条目</th>
+            <th scope="col" class="warden-admin-extra">设备</th>
+            <th scope="col" class="warden-admin-extra">两步验证</th>
+            <th scope="col" class="warden-admin-acts-col">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of users(); track u.id) {
+            <tr [attr.data-role]="u.role" [attr.data-uid]="u.id">
+              <td class="warden-admin-acct">
+                <b>{{ u.name || u.email }}</b>
+                @if (u.name) {
+                  <span>{{ u.email }}</span>
+                }
+              </td>
+              <td>
+                <span class="warden-admin-role warden-admin-role-{{ u.role }}">
+                  {{ roleLabel[u.role] }}
+                </span>
+              </td>
+              <td>
+                <span class="warden-admin-status warden-admin-status-{{ statusKind(u) }}">
+                  {{ statusText(u) }}
+                </span>
+              </td>
+              <td class="warden-admin-extra">{{ u.items }}</td>
+              <td class="warden-admin-extra">{{ u.devices }}</td>
+              <td class="warden-admin-extra">{{ u.hasTotp ? "已开启" : "未开启" }}</td>
+              <td class="warden-admin-acts-col">
+                <button
+                  type="button"
+                  class="warden-admin-btn warden-admin-btn-plain"
+                  [attr.data-testid]="'admin-manage-' + u.id"
+                  (click)="openDetail(u)"
+                >
+                  管理
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</bit-container>
+
+<!-- 账号详情 / 动作。⚠️ <dialog> 必须常驻 DOM（showModal 要求它在），
+     "关着"由 dialog 自身语义表达，不能用 @if 包住整个元素。 -->
+<dialog #detailDlg class="warden-admin-dlg" aria-labelledby="wardenAdminDetailTitle">
+  @let u = detail();
+  @if (u) {
+    <div class="warden-admin-dlg-head">
+      <h2 id="wardenAdminDetailTitle">{{ u.name || u.email }}</h2>
+      <button type="button" class="warden-admin-x" aria-label="关闭" (click)="closeDetail()">
+        ✕
+      </button>
+    </div>
+
+    <div class="warden-admin-dlg-body">
+      <dl class="warden-admin-kv">
+        <dt>邮箱</dt>
+        <dd>{{ u.email }}</dd>
+        <dt>名称</dt>
+        <dd>{{ u.name || "—" }}</dd>
+        <dt>创建时间</dt>
+        <dd>{{ fmtDate(u.createdAt) }}</dd>
+        <dt>到期时间</dt>
+        <dd>{{ u.expiresAt ? fmtDate(u.expiresAt) : "永不过期" }}</dd>
+        <dt>状态</dt>
+        <dd>{{ statusText(u) }}</dd>
+        <dt>条目 / 设备</dt>
+        <dd>{{ u.items }} / {{ u.devices }}</dd>
+        <dt>两步验证</dt>
+        <dd>{{ u.hasTotp ? "已开启" : "未开启" }}</dd>
+      </dl>
+
+      <h3 class="warden-admin-sub">角色</h3>
+      <p class="warden-admin-hint">{{ roleHint(u.role) }}</p>
+      <div class="warden-admin-row">
+        <select
+          class="warden-admin-select"
+          [attr.data-testid]="'admin-role-' + u.id"
+          [value]="u.role"
+          [disabled]="!u.roleEditable || busyId() === u.id"
+          [attr.aria-label]="'账号角色'"
+          (change)="changeRole(u, $any($event.target).value)"
+        >
+          @for (r of roleOptions; track r) {
+            <option [value]="r">{{ roleLabel[r] }}</option>
+          }
+        </select>
+        @if (!u.roleEditable) {
+          <span class="warden-admin-hint warden-admin-hint-inline">只有所有者可以修改角色</span>
+        } @else if (ownerCount() <= 1 && u.role === "owner") {
+          <span class="warden-admin-hint warden-admin-hint-inline">
+            这是最后一位所有者，不能降级
+          </span>
+        }
+      </div>
+
+      <h3 class="warden-admin-sub">账号动作</h3>
+      @if (lockReason(u)) {
+        <p class="warden-admin-hint warden-admin-warnbox">{{ lockReason(u) }}</p>
+      }
+      <div class="warden-admin-ops">
+        <button
+          type="button"
+          class="warden-admin-btn"
+          [disabled]="!u.manageable || busyId() === u.id"
+          (click)="signOut(u)"
+        >
+          踢下线（所有设备）
+        </button>
+        <button
+          type="button"
+          class="warden-admin-btn"
+          [disabled]="!u.manageable || busyId() === u.id"
+          (click)="reset2fa(u)"
+        >
+          重置两步验证
+        </button>
+        <button
+          type="button"
+          class="warden-admin-btn"
+          [disabled]="!u.manageable || busyId() === u.id"
+          (click)="toggleDisabled(u)"
+        >
+          {{ u.disabledAt ? "恢复登录" : "停用账号" }}
+        </button>
+        <button
+          type="button"
+          class="warden-admin-btn"
+          [disabled]="!u.manageable || busyId() === u.id"
+          (click)="setExpire(u, 7)"
+        >
+          7 天后到期
+        </button>
+        <button
+          type="button"
+          class="warden-admin-btn"
+          [disabled]="!u.manageable || busyId() === u.id || !u.expiresAt"
+          (click)="setExpire(u, null)"
+        >
+          取消到期
+        </button>
+      </div>
+
+      <div class="warden-admin-danger-zone">
+        <button
+          type="button"
+          class="warden-admin-btn warden-admin-danger"
+          [disabled]="!u.manageable || busyId() === u.id"
+          (click)="remove(u)"
+          data-testid="admin-delete"
+        >
+          删除账号及其密码库
+        </button>
+      </div>
+    </div>
+  }
+</dialog>
+
+<!-- 二次确认。自绘，**不用**原生 confirm()。 -->
+<dialog
+  #confirmDlg
+  class="warden-admin-dlg warden-admin-confirm"
+  aria-labelledby="wardenAdminConfirmTitle"
+>
+  <div class="warden-admin-dlg-head">
+    <h2 id="wardenAdminConfirmTitle">确认</h2>
+  </div>
+  <div class="warden-admin-dlg-body">
+    <p class="warden-admin-confirm-text">{{ confirmText() }}</p>
+    <div class="warden-admin-ops warden-admin-ops-end">
+      <button type="button" class="warden-admin-btn" (click)="answerConfirm(false)">取消</button>
+      <button
+        type="button"
+        class="warden-admin-btn warden-admin-danger"
+        (click)="answerConfirm(true)"
+        data-testid="admin-confirm-yes"
+      >
+        确认执行
+      </button>
+    </div>
+  </div>
+</dialog>

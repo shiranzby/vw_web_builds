@@ -86,6 +86,9 @@ import { FrontendLayoutComponent } from "./layouts/frontend-layout.component";
 import { UserLayoutComponent } from "./layouts/user-layout.component";
 import { RequestSMAccessComponent } from "./secrets-manager/secrets-manager-landing/request-sm-access.component";
 import { SMLandingComponent } from "./secrets-manager/secrets-manager-landing/sm-landing.component";
+// 自托管定制: 账号管理页(仅所有者/管理者可见, 见 account-admin.guard.ts)
+import { AccountAdminComponent } from "./settings/account-admin.component";
+import { accountAdminGuard } from "./settings/account-admin.guard";
 import { AppearanceComponent } from "./settings/appearance.component";
 import { DomainRulesComponent } from "./settings/domain-rules.component";
 import { CredentialGeneratorComponent } from "./tools/credential-generator/credential-generator.component";
@@ -754,6 +757,14 @@ const routes: Routes = [
             path: "sponsored-families",
             component: SponsoredFamiliesComponent,
             data: { titleId: "sponsoredFamilies" } satisfies RouteDataProperties,
+          },
+          {
+            // 自托管定制(原本只有 /admin/ 那个独立页面): 把账号管理并进设置栏目。
+            // 只有所有者/管理者进得来 —— 导航里的入口也按同一份判定隐藏。
+            path: "account-admin",
+            component: AccountAdminComponent,
+            canActivate: [accountAdminGuard],
+            data: { titleId: "settings" } satisfies RouteDataProperties,
           },
         ],
       },

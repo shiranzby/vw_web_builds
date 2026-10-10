@@ -3,6 +3,8 @@ import { toSignal } from "@angular/core/rxjs-interop";
 import { NavigationEnd, Router, RouterModule } from "@angular/router";
 import { filter, map, startWith } from "rxjs";
 
+import { AccountAdminService } from "./account-admin.service";
+
 type SubNavItem = { label: string; route: string };
 type SubNavSet = { prefix: string; items: SubNavItem[] };
 
@@ -39,6 +41,8 @@ type SubNavSet = { prefix: string; items: SubNavItem[] };
 })
 export class MobileSubNavComponent {
   private readonly router = inject(Router);
+  /** 自托管定制: settings 那套要不要带第 6 项「账号管理」，由它决定。 */
+  private readonly adminService = inject(AccountAdminService);
 
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -52,32 +56,39 @@ export class MobileSubNavComponent {
   /**
    * 两套二级导航（与 L4 的 NAV_SETS 一一对应：tools 3 项、settings 5 项）。
    * 设置里的「订阅 / 免费家庭版」两项上游是按订阅状态条件渲染的，自托管没有订阅，
-   * L4 当年就没放，这里保持一致（G5 断言 settings 恰好 5 项）。
+   * L4 当年就没放，这里保持一致。
+   *
+   * 自托管定制：所有者/管理者的 settings 会多出第 6 项「账号管理」—— 所以这里
+   * 从**静态数组**改成了 `computed`，跟着 `AccountAdminService.isAdmin()` 走。
+   * ⚠️ 改动同时要同步 CI 里那条"settings 恰好 5 项"的断言（已放宽为 5 或 6 项）。
    */
-  private readonly navSets: SubNavSet[] = [
-    {
-      prefix: "/tools",
-      items: [
-        { label: "生成器", route: "/tools/generator" },
-        { label: "导入", route: "/tools/import" },
-        { label: "导出", route: "/tools/export" },
-      ],
-    },
-    {
-      prefix: "/settings",
-      items: [
-        { label: "我的账户", route: "/settings/account" },
-        { label: "安全", route: "/settings/security" },
-        { label: "外观", route: "/settings/appearance" },
-        { label: "域名规则", route: "/settings/domain-rules" },
-        { label: "紧急访问", route: "/settings/emergency-access" },
-      ],
-    },
-  ];
+  private readonly navSets = computed<SubNavSet[]>(() => {
+    const settings: SubNavItem[] = [
+      { label: "我的账户", route: "/settings/account" },
+      { label: "安全", route: "/settings/security" },
+      { label: "外观", route: "/settings/appearance" },
+      { label: "域名规则", route: "/settings/domain-rules" },
+      { label: "紧急访问", route: "/settings/emergency-access" },
+    ];
+    if (this.adminService.isAdmin()) {
+      settings.push({ label: "账号管理", route: "/settings/account-admin" });
+    }
+    return [
+      {
+        prefix: "/tools",
+        items: [
+          { label: "生成器", route: "/tools/generator" },
+          { label: "导入", route: "/tools/import" },
+          { label: "导出", route: "/tools/export" },
+        ],
+      },
+      { prefix: "/settings", items: settings },
+    ];
+  });
 
   protected readonly items = computed<SubNavItem[]>(() => {
     const path = this.path();
-    return this.navSets.find((s) => this.under(path, s.prefix))?.items ?? [];
+    return this.navSets().find((s) => this.under(path, s.prefix))?.items ?? [];
   });
 
   /** 去掉 query / fragment，并用「等值或前缀 + `/`」匹配锚定在分区根上。 */
