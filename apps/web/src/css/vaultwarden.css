@@ -3076,8 +3076,15 @@ main#main-content .warden-admin-confirm-text {
   main#main-content .warden-admin-table td {
     display: block;
   }
+  /* ⚠️ 第二条**必须**写成 `td.warden-admin-extra`，不能只写 `.warden-admin-extra`：
+       上面那条 `... .warden-admin-table td { display: block }` 的特异性是 (id1,class1,type2)，
+       而 `... .warden-admin-extra` 只有 (id1,class1,type1) —— **优先级输给它**，
+       于是 <td> 照样显示，"窄屏降级成卡片列表"只剩 <thead> 被藏掉。
+       AC 段实测：18 个 .warden-admin-extra 里 15 个 <td> 没藏住，是**运行期断言**抓到的；
+       CI 里那条静态 grep 只能证明"选择器字符串在产物里"，证明不了它生效 —— 别指望它守住这条。
+       加上 `td` 之后变成 (id1,class2,type2) ⇒ 压过上面那条。 */
   main#main-content .warden-admin-table thead,
-  main#main-content .warden-admin-extra {
+  main#main-content .warden-admin-table td.warden-admin-extra {
     display: none;
   }
   main#main-content .warden-admin-tablewrap {
