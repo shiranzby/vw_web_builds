@@ -151,7 +151,13 @@
           (change)="changeRole(u, $any($event.target).value)"
         >
           @for (r of roleOptions; track r) {
-            <option [value]="r">{{ roleLabel[r] }}</option>
+            <!-- ⚠️ 必须显式绑 `[selected]`，只给 <select> 绑 `[value]` 不够。
+                 options 由**同一次变更检测**里的 @for 渲染，写 <select>.value 时它们还没进 DOM
+                 ⇒ value 静默设不上，<select> 回落到第一项。
+                 实测（AC 段人工过目截图）：一个 owner 账号的弹窗里显示的是「普通用户」——
+                 功能没错（change 事件读的是实际选中值），但**显示**会骗人。
+                 option 上的 [selected] 是 property binding，按选项自身声明，不依赖写入顺序。 -->
+            <option [value]="r" [selected]="r === u.role">{{ roleLabel[r] }}</option>
           }
         </select>
         @if (!u.roleEditable) {
