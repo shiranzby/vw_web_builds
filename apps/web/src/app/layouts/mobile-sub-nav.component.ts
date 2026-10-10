@@ -60,7 +60,9 @@ export class MobileSubNavComponent {
    *
    * 自托管定制：所有者/管理者的 settings 会多出第 6 项「账号管理」—— 所以这里
    * 从**静态数组**改成了 `computed`，跟着 `AccountAdminService.isAdmin()` 走。
-   * ⚠️ 改动同时要同步 CI 里那条"settings 恰好 5 项"的断言（已放宽为 5 或 6 项）。
+   * ⚠️ 项数从"恰好 5"变成"5 或 6"**不会有任何脚本报错**：上游那个按项数断言的
+   *    `tests/mobile-regression.mjs`（G5）已不在本仓库（`tests/` 目录不存在），
+   *    CI 的产物断言里也没有数量断言。所以"实际渲染出几项"只能靠运行期验收显式数一遍。
    */
   private readonly navSets = computed<SubNavSet[]>(() => {
     const settings: SubNavItem[] = [
