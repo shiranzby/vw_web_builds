@@ -173,8 +173,14 @@ bit-nav-logo bit-nav-item .bwi-shield {
 
   /* H7. 表头行: 文字降一档, 内边距留够 28px 的胶囊按钮。
      原补丁层锚在 custom.js 给"名称"th 加的 .warden-name-th 上;
-     迁到源码后直接锚官方的 <th bitCell>, 视觉等价。 */
-  main#main-content table thead th {
+     迁到源码后直接锚官方的 <th bitCell>, 视觉等价。
+     ⚠️ `:not(.warden-admin-table)` 是 AD 段(第二十四批)加的: 这条规则带 `!important`,
+        会把**账号管理表**的表头也压成 13px/500、上下内边距 6px —— 那个表有自己的表头规格
+        (12px/600、上下 8px，见 AD 段)。不排除它的话，同一张表的表头会在
+        "容器 ≥860px"与"容器 <860px 但视口 ≤768px"两种情形下**字号与行高都不一样**
+        （设计方案里"字号不一 / 控件不等高"是零容忍项）。实测由
+        `.deploycheck/probe-ad-table.mjs` 在 560/640 两个视口抓到。 */
+  main#main-content table:not(.warden-admin-table) thead th {
     padding-top: 6px !important;
     padding-bottom: 6px !important;
     font-size: 13px !important;
@@ -2839,35 +2845,79 @@ main#main-content .warden-admin-danger:hover:not(:disabled) {
   background: rgb(var(--color-danger-700));
 }
 
-/* --- 账号表 --- */
+/* --- 账号表 ---
+   🔴 AD 段（第二十四批）列布局。用户原话：
+        「做好各比例各页面的适配 可以完整展示就完整展示 不能完整展示就把主要的保留
+         　账号名 角色 操作是必不可少的
+         　首行标题行与厦下面的行要稍稍不一样
+         　但是除了第一列和第一列（=第一列和最后一列），其余中间列全部均分，内容每行得居中对齐」
+   ⇒ 这里放三条"不随宽度变"的规则：
+      ① **中间列均分**：`table-layout: fixed`。固定布局的规则恰好就是"**给了宽度的列按给定值，
+         没给宽度的列平分剩余空间**" —— 所以给首列/末列宽度、中间列一个宽度都不给，
+         中间列就自动均分。**自动布局做不到**：`width: 1px` 那类技巧只能让列"按内容收缩"，
+         收缩出来的宽度各不相同（改前实测 角色 174px vs 条目 102px，差 70%）。
+      ② **居中**：只有首列（账号，纯文本）保持左对齐，其余列一律居中。
+      ③ **表头行与数据行"稍稍不一样"**：底色提一档 + 一条底边线 + 字距。
+   ⚠️ "随宽度变的那部分"（哪几列该被藏掉）不在这里，在文件末尾的 `@container warden-admin` 阶梯里。 */
 main#main-content .warden-admin-tablewrap {
   border: 1px solid rgb(var(--color-secondary-100));
   border-radius: 12px;
   overflow: hidden;
+  /* 🔴 列的取舍必须跟着**表格可用宽度**走，不能跟着视口宽度走 ——
+     web vault 有可折叠侧栏，实测视口 1440 时内容区只有 894px、视口 860 时只有 506px。
+     媒体查询看不见侧栏，会把"只有 506px 可用"当成"有 860px"，于是 7 列全挤在一起
+     （改前实测：账号列只剩 57px，长邮箱全被截成 "shy295…"）。
+     `inline-size` 只约束内联尺寸；本元素是块级、宽度本来就由父级决定 ⇒ 对布局零影响。 */
+  container-type: inline-size;
+  container-name: warden-admin;
 }
 main#main-content .warden-admin-table {
   width: 100%;
   border-collapse: collapse;
+  /* ↑ 见上面 ① */
+  table-layout: fixed;
   font-size: 14px;
 }
 main#main-content .warden-admin-table th,
 main#main-content .warden-admin-table td {
   padding: 8px 16px;
-  text-align: left;
+  /* 中间列 + 末列居中；首列在下面单独改回 left */
+  text-align: center;
   vertical-align: middle;
 }
-main#main-content .warden-admin-table th {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgb(var(--color-text-muted));
-  background: rgb(var(--color-background-alt));
+/* 首列「账号」：给宽度 ⇒ 长邮箱在同一行内被省略号截断，而不是把别的列挤扁。
+   30% 是"够放 名称 + 一整行邮箱"的量；因为内容区本身有 894px 上限，30% 最大也就 268px。 */
+main#main-content .warden-admin-table th:first-child,
+main#main-content .warden-admin-table td:first-child {
+  width: 30%;
+  text-align: left;
 }
+/* 末列「操作」：固定宽 —— 内容只有一个 36px 高的胶囊按钮，左右各 16px 内边距。 */
+main#main-content .warden-admin-table th:last-child,
+main#main-content .warden-admin-table td:last-child {
+  width: 96px;
+}
+/* 中间列**故意不给任何宽度** ⇒ 固定布局下它们平分剩余空间（= 需求里的"均分"）。
+   ⚠️ 别"顺手"给它们加 width，一加就不均分了。 */
 main#main-content .warden-admin-table tbody tr + tr td {
   border-top: 1px solid rgb(var(--color-secondary-100));
 }
+/* 表头行与数据行"稍稍不一样"：
+   底色从 `--color-background-alt`(浅色 243 246 249 —— 与白底只差 4%，实测肉眼几乎看不出)
+   提到 `--color-secondary-100`(浅色 230 233 239 / 深色 48 57 70，两套主题都够分辨)，
+   再加一条底边线把表头和数据切干净。
+   ⚠️ 用户要的是"**稍稍**"不一样 —— 所以只动底色/字距/字号，不动字号大小到"像另一种表"、
+      也不加投影或粗边框那种抢戏的东西。 */
+main#main-content .warden-admin-table th {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgb(var(--color-text-muted));
+  background: rgb(var(--color-secondary-100));
+  border-bottom: 1px solid rgb(var(--color-secondary-100));
+}
 main#main-content .warden-admin-acct {
   display: table-cell;
-  max-width: 0; /* 让长邮箱在同一行内被省略号截断, 而不是把表格撑开 */
 }
 main#main-content .warden-admin-acct b {
   display: block;
@@ -2885,7 +2935,9 @@ main#main-content .warden-admin-acct span {
   color: rgb(var(--color-text-muted));
 }
 main#main-content .warden-admin-acts-col {
-  text-align: right;
+  /* 居中共用上面 `th, td` 那条；这里只保证"操作"两字与按钮不折行。
+     （原 `text-align: right` 其实一直被 `... .warden-admin-table td` 那条通配规则压掉，
+       写在这里只会误导后来的人 —— 见 AD 段注释里的特异性算式。） */
   white-space: nowrap;
 }
 
@@ -3066,10 +3118,45 @@ main#main-content .warden-admin-confirm-text {
   white-space: pre-line;
 }
 
-/* --- 窄屏: 表格改卡片列表 ---
-   规范不允许横向滚动, 所以不靠 overflow-x, 而是把每个 <tr> 变成一块卡片,
-   并把次要列(条目/设备/两步验证)藏掉 —— 它们本来就是辅助信息, 详情弹窗里有。 */
-@media (max-width: 768px) {
+/* --- 列的取舍：跟着**表格可用宽度**分 5 档（容器查询）---
+   需求「可以完整展示就完整展示 不能完整展示就把主要的保留」。
+   档位是按"每个中间列至少 96px"倒推的 —— 最宽的那个徽章是「普通用户」= 4 字 × 12px + 左右内边距 16px
+   = 64px，加上单元格左右内边距 32px 正好 96px。首列固定 30%、末列固定 96px：
+
+     容器宽      可见列                                              算出来的中间列宽（每列）
+     ≥ 860px    账号 角色 状态 条目 设备 两步验证 操作               (860−258−96)/5 ≈ 101px
+     700~859    账号 角色 状态 条目      两步验证 操作   隐「设备」   (700−210−96)/4 ≈ 98px
+     620~699    账号 角色 状态 条目           操作       隐「设备/条目」(620−186−96)/3 ≈ 112px
+     500~619    账号 角色 状态                操作       再隐「两步验证」(500−150−96)/2 ≈ 127px
+     < 500      卡片列表（纵向堆叠）                                 ——
+
+   🔴 账号 / 角色 / 操作 **三列永不隐藏**（用户原话「必不可少的」）。
+      状态在"连表格都排不下"时随卡片模式换形态，但仍是每张卡片第一眼能看到的内容。
+   🔴 隐藏顺序 = 重要性升序：「设备」(会话数) → 「条目」(库大小) → 「两步验证」。
+   ⚠️ 为什么用容器查询而不是媒体查询：见上面 `.warden-admin-tablewrap` 那段注释
+      （侧栏可折叠 ⇒ 视口宽度 ≠ 表格可用宽度；实测视口 860px 时可用宽度只剩 506px，
+        旧写法会把 7 列全塞进 506px，账号列被压到 57px）。 */
+@container warden-admin (max-width: 859px) {
+  main#main-content .warden-admin-table .warden-admin-col-devices {
+    display: none;
+  }
+}
+@container warden-admin (max-width: 699px) {
+  main#main-content .warden-admin-table .warden-admin-col-items {
+    display: none;
+  }
+}
+@container warden-admin (max-width: 619px) {
+  main#main-content .warden-admin-table .warden-admin-col-totp {
+    display: none;
+  }
+}
+/* --- 卡片列表（容器 < 500px）：每个 <tr> 变成一块卡片 ---
+   规范不允许横向滚动, 所以不靠 overflow-x, 而是把行改成纵向堆叠,
+   并把次要列(条目/设备/两步验证)藏掉 —— 它们本来就是辅助信息, 详情弹窗里有。
+   ⚠️ 阈值从"视口 768px"改成了"容器 499px"：前者看的是视口，所以侧栏一展开
+      就会出现"视口 900 但可用只有 500"却仍然硬排表格的情况。现在跟着可用宽度走。 */
+@container warden-admin (max-width: 499px) {
   main#main-content .warden-admin-table,
   main#main-content .warden-admin-table tbody,
   main#main-content .warden-admin-table tr,
@@ -3105,11 +3192,24 @@ main#main-content .warden-admin-confirm-text {
   main#main-content .warden-admin-table td {
     padding: 4px 0;
   }
-  main#main-content .warden-admin-acct,
-  main#main-content .warden-admin-acts-col {
-    max-width: none;
+  /* 卡片是**纵向堆叠**的，"中间列均分 + 居中"那套表格规则在这里不适用 ——
+     单列堆叠时居中会让邮箱、徽章、按钮各自缩在中间，反而对不齐 ⇒ 一律左对齐、并清掉列宽。
+     注意要连 `:first-child` / `:last-child` 一起列出来：那两条在基础规则里是 (id1,class2,type2)，
+     只写通配的 `th, td`（(id1,class1,type2)）**压不过它们**。 */
+  main#main-content .warden-admin-table th,
+  main#main-content .warden-admin-table td,
+  main#main-content .warden-admin-table th:first-child,
+  main#main-content .warden-admin-table td:first-child,
+  main#main-content .warden-admin-table th:last-child,
+  main#main-content .warden-admin-table td:last-child {
+    width: auto;
     text-align: left;
   }
+}
+
+/* --- 窄屏（**视口**，不是容器）：触控目标与弹窗 ---
+   这一段跟表格列数无关，是"手指够不够得着"的问题，所以继续用媒体查询。 */
+@media (max-width: 768px) {
   /* 触控下限 44px: 窄屏的按钮/下拉/关闭键都抬到它 */
   main#main-content .warden-admin-btn,
   main#main-content .warden-admin-select {

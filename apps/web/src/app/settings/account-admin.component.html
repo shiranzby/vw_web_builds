@@ -63,9 +63,12 @@
             <th scope="col">账号</th>
             <th scope="col">角色</th>
             <th scope="col">状态</th>
-            <th scope="col" class="warden-admin-extra">条目</th>
-            <th scope="col" class="warden-admin-extra">设备</th>
-            <th scope="col" class="warden-admin-extra">两步验证</th>
+            <!-- 三个"次要列"：都带 `warden-admin-extra`（窄屏整体降级成卡片时一并藏掉），
+                 各自另有专属类名 —— 宽屏下按**表格可用宽度**分档逐个隐藏，见 vaultwarden.css 的 AD 段。
+                 隐藏顺序 = 重要性升序：设备 → 条目 → 两步验证；账号/角色/状态/操作 永不隐藏。 -->
+            <th scope="col" class="warden-admin-extra warden-admin-col-items">条目</th>
+            <th scope="col" class="warden-admin-extra warden-admin-col-devices">设备</th>
+            <th scope="col" class="warden-admin-extra warden-admin-col-totp">两步验证</th>
             <th scope="col" class="warden-admin-acts-col">操作</th>
           </tr>
         </thead>
@@ -88,9 +91,11 @@
                   {{ statusText(u) }}
                 </span>
               </td>
-              <td class="warden-admin-extra">{{ u.items }}</td>
-              <td class="warden-admin-extra">{{ u.devices }}</td>
-              <td class="warden-admin-extra">{{ u.hasTotp ? "已开启" : "未开启" }}</td>
+              <td class="warden-admin-extra warden-admin-col-items">{{ u.items }}</td>
+              <td class="warden-admin-extra warden-admin-col-devices">{{ u.devices }}</td>
+              <td class="warden-admin-extra warden-admin-col-totp">
+                {{ u.hasTotp ? "已开启" : "未开启" }}
+              </td>
               <td class="warden-admin-acts-col">
                 <button
                   type="button"
