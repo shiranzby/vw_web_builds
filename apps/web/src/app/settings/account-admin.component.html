@@ -1,6 +1,10 @@
 <app-header></app-header>
 
-<bit-container>
+<!-- ⚠️ AE 段（第二十五批）：官方 <bit-container> 模板里是 <div class="tw-max-w-4xl">
+     （Tailwind max-width: 56rem = 896px）。1920 视口实测 main#main-content 有 1568px 可用，
+     整页却被硬卡在 896px ⇒ 右侧一大片空白。只有本页挂 .warden-admin-wide，
+     由 vaultwarden.css 清掉这一层的 max-width；其它设置页保持官方宽度不变。 -->
+<bit-container class="warden-admin-wide">
   @let s = stats();
 
   <!-- 概览。aria-live 让刷新后的数字变化能被读屏播报（与 /admin/ 一致） -->

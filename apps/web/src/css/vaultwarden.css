@@ -2758,6 +2758,22 @@ body.warden-avatar-on main#main-content app-header bit-avatar svg text {
  *       卡片/弹窗走 12/20px；间距取 4/8/16/24。
  * ====================================================================== */
 
+/* --- AE 段（第二十五批）：桌面端**铺满** + 手机端卡片**同行** ---
+ * 🔴 根因（probe-ae-width.mjs 在生产实测，可核对）：
+ *      视口 1920 → main#main-content 宽 1632（左右各 32px padding ⇒ 1568px 可用），
+ *      但官方 <bit-container> 的模板是 <div class="tw-max-w-4xl">，
+ *      Tailwind 的 max-width: 56rem = **896px** 把整页硬卡住 ⇒ 表格只有 896px，
+ *      右侧 672px 全是空白（用户截图里那片白）。
+ *    ⇒ 只在本页的 <bit-container> 上挂 .warden-admin-wide 并清掉这一层的 max-width；
+ *      其它设置页复用同一个官方组件，保持官方宽度不变（举一反三：不误伤）。
+ * ⚠️ 为什么用 `> .tw-max-w-4xl` 而不直接改组件：那是 libs/components 的上游组件，
+ *      改了会波及所有设置页；本 fork 一贯只覆盖表现层、不动上游源码。
+ * ⚠️ 特异性：main#main-content + bit-container.warden-admin-wide + .tw-max-w-4xl
+ *      = (id1,class2,type2)，高于 Tailwind 的 .tw-max-w-4xl (class1)。 */
+main#main-content bit-container.warden-admin-wide > .tw-max-w-4xl {
+  max-width: none;
+}
+
 /* --- 概览: 与 /admin/ 同口径的 5 个计数 --- */
 main#main-content .warden-admin-stats {
   display: grid;
@@ -3205,6 +3221,38 @@ main#main-content .warden-admin-confirm-text {
     width: auto;
     text-align: left;
   }
+
+  /* --- AE 段：账号名一行 + 三要素同一行，账号名过长省略 ---
+     改前（用户截图 + probe-ae-width 实测）：4 个可见 <td> 全是 display:block，
+     分别落在 y=329 / 361 / 397 / 433，一张卡片纵向堆了 4 行、高约 200px。
+     ⇒ <tr> 改 flex-wrap：首列占满一行（min-width:0 让 <b> 的 ellipsis 生效），
+       角色 / 状态 / 操作 三个 <td> 改 inline-flex 排在同一行，操作按钮靠右。
+     ⚠️ 不能写成 `td { display:inline-flex }`：首列也会跟着变成 inline-flex，
+        与徽章挤在同一行、长账号名反而被压扁。这里只挑
+        :nth-child(2) / :nth-child(3) / :last-child 三个。
+     ⚠️ 特异性：`td:nth-child(2)` 带伪类 ⇒ (id1,class2,type2)，压过上面的
+        `... .warden-admin-table td { display:block }` (id1,class1,type2)。 */
+  main#main-content .warden-admin-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 8px;
+  }
+  main#main-content .warden-admin-table td:first-child {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  main#main-content .warden-admin-table td:nth-child(2),
+  main#main-content .warden-admin-table td:nth-child(3),
+  main#main-content .warden-admin-table td:last-child {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    width: auto;
+  }
+  main#main-content .warden-admin-table td:last-child {
+    margin-left: auto;
+  }
 }
 
 /* --- 窄屏（**视口**，不是容器）：触控目标与弹窗 ---
@@ -3231,5 +3279,21 @@ main#main-content .warden-admin-confirm-text {
   main#main-content .warden-admin-ops-end .warden-admin-btn {
     width: auto;
     flex: 1 1 0;
+  }
+
+  /* --- AE 段：统计卡 5 个不再「上 4 下 1」换行 ---
+     改前：`repeat(auto-fit, minmax(96px, 1fr))` 在约 430px 视口算出 4 列
+     ⇒ 5 个卡变成 4+1（用户手机截图里孤零零第二行的「7 天内到期」）。
+     ⇒ 窄屏固定 5 等分一行，缩内距与标签字号让「7 天内到期」放得下。
+     ⚠️ `minmax(0, 1fr)` 保证 320px 极窄屏只压缩、不横向溢出。 */
+  main#main-content .warden-admin-stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+  main#main-content .warden-admin-stat {
+    padding: 8px 4px;
+  }
+  main#main-content .warden-admin-stat span {
+    font-size: 11px;
   }
 }
